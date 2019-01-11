@@ -117,7 +117,7 @@ public class FlatBuffersLoaderBuilder
 
 	void BuildItemForParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
-		string fun = @"public partial class {0} : DataItemReadOnly
+		string fun = @"public partial class {0} : DataItemBase
 {1}
 	partial void OnPostParse();
 	public void Dispose()
@@ -178,18 +178,18 @@ public class FlatBuffersLoaderBuilder
 ";
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
-			string typeName = "DataItemReadOnly.CompareInt";
+			string typeName = "DataItemBase.CompareInt";
 			switch (_excel.GetFieldType(index))
 			{
 				case ExceFieldType.REAL:
 					{
-						typeName = "DataItemReadOnly.CompareSingle";
+						typeName = "DataItemBase.CompareSingle";
 					}
 					break;
 
 				case ExceFieldType.TEXT:
 					{
-						typeName = "DataItemReadOnly.CompareString";
+						typeName = "DataItemBase.CompareString";
 					}
 					break;
 			}
@@ -211,8 +211,7 @@ public class FlatBuffersLoaderBuilder
 			fun = buildName(_excel.GetFieldName(index));
 			file.AppendFormat("\t\t_{0} = item.{0};\n", fun);
 		}
-		file.AppendLine("\t\tParseDone();\n\t}");
-
+		file.AppendLine("\t\tOnPostParse();\n\t}");
 		file.AppendLine("}\n");
 	}
 
@@ -221,6 +220,12 @@ public class FlatBuffersLoaderBuilder
 		string fun = @"public static partial class {0}
 {5}
 	static List<{1}>[] _listArray = null;
+	static {1} _FindResult = null;
+	static System.Func<{1}, IteratorStatus> _ReceiveOne = delegate({1} item)
+	{5}
+		_FindResult = item;
+		return IteratorStatus.BREAK;
+	{6};
 
 	public static void LoadDatas()
 	{5}
@@ -229,7 +234,7 @@ public class FlatBuffersLoaderBuilder
 			return;
 		{6}
 
-		ByteBuffer data = DataItemReadOnly.Load(""{2}"");
+		ByteBuffer data = DataItemBase.Load(""{2}"");
 		if (data == null)
 		{5}
 			return;
@@ -244,6 +249,8 @@ public class FlatBuffersLoaderBuilder
 			item.Parse(structList.List(index).Value);
 			list.Add(item);
 		{6}
+		data.Dispose();
+		DataItemBase.OnPostLoaded({0}.Dispose);
 		list.Sort({1}._Comparison[0]);
 		_listArray[0] = list;
 	{6}
@@ -273,6 +280,7 @@ public class FlatBuffersLoaderBuilder
 
 	static void BuildKeyByIndex(int index)
 	{5}
+		LoadDatas();
 		if (_listArray[index] == null)
 		{5}
 			List<{1}> list = new List<{1}>(_listArray[0].Count);
@@ -283,27 +291,26 @@ public class FlatBuffersLoaderBuilder
 		{6}
 	{6}
 
-	static void FindItemByField<T, TV>(List<T>[] listArray, int field, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, System.Func<T, bool> receiver) where T : {1}
+	static {1} FindItemByField<T, TV>(List<T>[] listArray, int field, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, System.Func<T, IteratorStatus> receiver) where T : {1}
 	{5}
-		if(receiver == null)
+		_FindResult = null;
+		if(receiver != null)
 		{5}
-			return;
-		{6}
-
-		BuildKeyByIndex(field);
-		List<T> list = listArray[field];
-		int id = DataItemReadOnly.BinarySearch<T, TV>(list, comparison, get_value, value);
-		if(id >= 0)
-		{5}
-			for(int index = id; index < list.Count; index ++)
+			List<T> list = listArray[field];
+			int position = DataItemBase.BinarySearch<T, TV>(list, comparison, get_value, value);
+			if(position >= 0)
 			{5}
-				T item = list[index];
-				if(comparison(get_value(item), value) != 0 || receiver(item) == false)
+				for(int index = position; index < list.Count; index ++)
 				{5}
-					return;
+					T item = list[index];
+					if(comparison(get_value(item), value) != 0 || receiver(item) == IteratorStatus.BREAK)
+					{5}
+						break;
+					{6}
 				{6}
 			{6}
 		{6}
+		return _FindResult;
 	{6}
 ";
 		//0:paserName
@@ -324,29 +331,29 @@ public class FlatBuffersLoaderBuilder
 		//5:fieldtype
 		//6:compare fun
 		fun = @"	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
-	public static void Find{0}({5} value, System.Func<{4}, bool> receiver)
+	public static {4} Find{0}({5} value, System.Func<{4}, IteratorStatus> receiver = null)
 	{2}
-		FindItemByField<{4}, {5}>(_listArray, {1}, value, {6}, {4}._Get{0}, receiver);
+		BuildKeyByIndex({1}); return FindItemByField<{4}, {5}>(_listArray, {1}, value, {6}, {4}._Get{0}, receiver != null ? receiver : _ReceiveOne);
 	{3}
 
 ";
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
 			string fieldType = "int";
-			string compareFun = "DataItemReadOnly.CompareInt";
+			string compareFun = "DataItemBase.CompareInt";
 			switch (_excel.GetFieldType(index))
 			{
 				case ExceFieldType.REAL:
 					{
 						fieldType = "float";
-						compareFun = "DataItemReadOnly.CompareSingle";
+						compareFun = "DataItemBase.CompareSingle";
 					}
 					break;
 
 				case ExceFieldType.TEXT:
 					{
 						fieldType = "string";
-						compareFun = "DataItemReadOnly.CompareString";
+						compareFun = "DataItemBase.CompareString";
 					}
 					break;
 			}

@@ -57,23 +57,30 @@ public class ExcelParser
 		return obj.ToString();
 	}
 
+	static bool IsMatch(string input, string pattern)
+	{
+		Match match = Regex.Match(input, pattern);
+		return match != null && match.Success && match.Length == input.Length;
+	}
+
 	static ExceFieldType GetStringType(string value)
 	{
 		if(string.IsNullOrEmpty(value))
 		{
 			return ExceFieldType.None;
 		}
-
-		int i = 0;
-		if(int.TryParse(value, out i) && i.ToString() == value)
+		else if(value == "0")
 		{
 			return ExceFieldType.INTEGER;
 		}
 
-		float f = 0;
-		if(float.TryParse(value, out f) && f.ToString() == value)
+		if (IsMatch(value, "[0-9]\\d*[.][0-9]*$"))
 		{
 			return ExceFieldType.REAL;
+		}
+		else if (IsMatch(value, "[1-9]\\d*$"))
+		{
+			return ExceFieldType.INTEGER;
 		}
 		
 		return ExceFieldType.TEXT;
@@ -93,61 +100,50 @@ public class ExcelParser
 		}
 
 		_filename = Path.GetFileNameWithoutExtension(excelPath);
-		try
+		using (FileStream excelFile = File.Open(excelPath, FileMode.Open, FileAccess.Read, FileShare.Read))
 		{
-			using (FileStream excelFile = File.Open(excelPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+			IExcelDataReader excelReader = extension == ".xls" ? ExcelReaderFactory.CreateBinaryReader(excelFile) : ExcelReaderFactory.CreateOpenXmlReader(excelFile);
+
+			//读标题
+			if (excelReader.Read())
 			{
-				IExcelDataReader excelReader = extension == ".xls" ? ExcelReaderFactory.CreateBinaryReader(excelFile) : ExcelReaderFactory.CreateOpenXmlReader(excelFile);
-
-				//读标题
-				if (excelReader.Read())
+				List<int> fieldids = new List<int>();
+				List<string> fieldlist = new List<string>();
+				for (int i = 0; i < excelReader.FieldCount; i++)
 				{
-					List<int> fieldids = new List<int>();
-					List<string> fieldlist = new List<string>();
-					for (int i = 0; i < excelReader.FieldCount; i++)
+					string fieldname = GetString(excelReader, i).Trim();
+					if (string.IsNullOrEmpty(fieldname) == false)
 					{
-						string fieldname = GetString(excelReader, i).Trim();
-						if(string.IsNullOrEmpty(fieldname) == false)
-						{
-							fieldlist.Add(fieldname);
-							fieldids.Add(i);
-						}
-					}
-					_fieldNames = fieldlist.ToArray();
-					_fieldCount = _fieldNames.Length;
-
-					//检查数据类型
-					int index = 0;
-					_rowCount = excelReader.RowCount - 1;
-					_contentList = new List<string[]>(_fieldCount);
-					_fieldTypes = new ExceFieldType[_fieldCount];
-					while (excelReader.Read())
-					{
-						index++;
-						string[] contents = new string[_fieldCount];
-						for (int i = 0; i < _fieldCount; i++)
-						{
-							contents[i] = GetString(excelReader, fieldids[i]);
-							ExceFieldType contentType = GetStringType(contents[i]);
-							if (_fieldTypes[i] < contentType)
-							{
-								_fieldTypes[i] = contentType;
-							}
-						}
-						_contentList.Add(contents);
+						fieldlist.Add(fieldname);
+						fieldids.Add(i);
 					}
 				}
-				excelFile.Dispose();
-				excelReader.Dispose();
+				_fieldNames = fieldlist.ToArray();
+				_fieldCount = _fieldNames.Length;
+
+				//检查数据类型
+				int index = 0;
+				_rowCount = excelReader.RowCount - 1;
+				_contentList = new List<string[]>(_fieldCount);
+				_fieldTypes = new ExceFieldType[_fieldCount];
+				while (excelReader.Read())
+				{
+					index++;
+					string[] contents = new string[_fieldCount];
+					for (int i = 0; i < _fieldCount; i++)
+					{
+						contents[i] = GetString(excelReader, fieldids[i]);
+						ExceFieldType contentType = GetStringType(contents[i]);
+						if (_fieldTypes[i] < contentType)
+						{
+							_fieldTypes[i] = contentType;
+						}
+					}
+					_contentList.Add(contents);
+				}
 			}
-		}
-		catch(System.Exception e)
-		{
-
-		}
-		finally
-		{
-
+			excelFile.Dispose();
+			excelReader.Dispose();
 		}
 	}
 

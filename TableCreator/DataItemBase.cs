@@ -3,8 +3,16 @@ using System.IO;
 using FlatBuffers;
 using System.Collections.Generic;
 
-public class DataItemReadOnly
+public enum IteratorStatus
 {
+	CONTINUE = 0,
+	BREAK,
+}
+
+public class DataItemBase
+{
+	static System.Action _dispose = null;
+
 	public static int CompareInt(int a, int b)
 	{
 		if(a == b)
@@ -28,7 +36,7 @@ public class DataItemReadOnly
 		return a.CompareTo(b);
 	}
 
-	public static int BinarySearch<T, TV>(List<T> list, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, TV value) where T : DataItemReadOnly
+	public static int BinarySearch<T, TV>(List<T> list, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, TV value) where T : DataItemBase
 	{
 		int result = -1;
 		if(list != null && list.Count > 0)
@@ -69,5 +77,33 @@ public class DataItemReadOnly
 	public static ByteBuffer Load(string path)
 	{
 		return null;
+	}
+
+	public static void OnPostLoaded(System.Action action)
+	{
+		if (action == null)
+		{
+			return;
+		}
+		_dispose += action;
+	}
+
+	public static void Dispose()
+	{
+		try
+		{
+			if (_dispose != null)
+			{
+				_dispose();
+			}
+		}
+		catch (System.Exception e)
+		{
+			Console.WriteLine(e.ToString());
+		}
+		finally
+		{
+			_dispose = null;
+		}
 	}
 }

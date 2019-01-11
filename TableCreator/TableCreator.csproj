@@ -54,7 +54,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataItemReadOnly.cs" />
+    <Compile Include="DataItemBase.cs" />
     <Compile Include="ExcelParser.cs" />
     <Compile Include="FlatBuffersCreator.cs" />
     <Compile Include="FlatBuffersLoaderBuilder.cs" />

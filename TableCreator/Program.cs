@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Xml;
+using System.Threading;
 using System.Collections.Generic;
 
 namespace TableCreator
@@ -83,12 +84,12 @@ namespace TableCreator
 				config_node.SetAttribute("sharp_output", sharp_out);
 				doc.Save(configPath);
 
-				if(string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
+				if(string.IsNullOrEmpty(bin_out) || string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
 				{
 					bin_out = Path.Combine(exeRoot, bin_out);
 				}
 
-				if (string.IsNullOrEmpty(Path.GetPathRoot(sharp_out)))
+				if (string.IsNullOrEmpty(sharp_out) || string.IsNullOrEmpty(Path.GetPathRoot(sharp_out)))
 				{
 					sharp_out = Path.Combine(exeRoot, sharp_out);
 				}
