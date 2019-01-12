@@ -107,3 +107,122 @@ public class DataItemBase
 		}
 	}
 }
+
+public class Query<T> : System.IDisposable where T : DataItemBase
+{
+	int _position;
+	List<T> _list;
+
+	public T Value
+	{
+		get { return _list != null && _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+	}
+
+	public static Query<T> Create(List<T> list)
+	{
+		Query<T> query = new Query<T>();
+		query._list = list;
+		query._position = list.Count;
+		return query;
+	}
+
+	public bool Step()
+	{
+		if (_list != null && _list.Count > 0 && _position >= 0)
+		{
+			if (_position >= _list.Count)
+			{
+				_position = 0;
+			}
+			else
+			{
+				_position++;
+				if (_position >= _list.Count)
+				{
+					_position = -1;
+				}
+			}
+		}
+		return _position >= 0;
+	}
+
+	public void Dispose()
+	{
+		_list = null;
+	}
+}
+
+public class Query<T, TV> : System.IDisposable where T : DataItemBase
+{
+	int _position;
+	List<T> _list;
+	TV _value = default(TV);
+	System.Func<T, TV> _get_value = null;
+	System.Func<TV, TV, int> _comparison = null;
+
+	public T Value
+	{
+		get { return _list != null && _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+	}
+
+	public static Query<T, TV> Create(List<T> list, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value)
+	{
+		Query<T, TV> query = new Query<T, TV>();
+		query._list = list;
+		query._value = value;
+		query._comparison = comparison;
+		query._get_value = get_value;
+		query._position = list.Count;
+		return query;
+	}
+
+	public bool Step()
+	{
+		if (_list != null && _list.Count > 0 && _position >= 0)
+		{
+			if (_position >= _list.Count)
+			{
+				_position = DataItemBase.BinarySearch<T, TV>(_list, _comparison, _get_value, _value);
+				if (_position >= 0)
+				{
+					for (int index = _position; index < _list.Count; index++)
+					{
+						T item = _list[index];
+						if (_comparison(_get_value(item), _value) != 0)
+						{
+							break;
+						}
+						else
+						{
+							_position = index;
+						}
+					}
+				}
+			}
+			else
+			{
+				_position++;
+				if (_position >= _list.Count)
+				{
+					_position = -1;
+				}
+				else
+				{
+					T item = _list[_position];
+					if (_comparison(_get_value(item), _value) != 0)
+					{
+						_position = -1;
+					}
+				}
+			}
+		}
+		return _position >= 0;
+	}
+
+	public void Dispose()
+	{
+		_list = null;
+		_get_value = null;
+		_comparison = null;
+	}
+}

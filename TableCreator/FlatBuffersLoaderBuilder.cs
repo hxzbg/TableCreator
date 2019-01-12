@@ -220,12 +220,6 @@ public class FlatBuffersLoaderBuilder
 		string fun = @"public static partial class {0}
 {5}
 	static List<{1}>[] _listArray = null;
-	static {1} _FindResult = null;
-	static System.Func<{1}, IteratorStatus> _ReceiveOne = delegate({1} item)
-	{5}
-		_FindResult = item;
-		return IteratorStatus.BREAK;
-	{6};
 
 	public static void LoadDatas()
 	{5}
@@ -278,6 +272,12 @@ public class FlatBuffersLoaderBuilder
 		{6}
 	{6}
 
+	public static Query<{1}> Query()
+	{5}
+		LoadDatas();
+		return Query<{1}>.Create(_listArray[0]);
+	{6}
+
 	static void BuildKeyByIndex(int index)
 	{5}
 		LoadDatas();
@@ -289,28 +289,6 @@ public class FlatBuffersLoaderBuilder
 
 			list.Sort({1}._Comparison[index]);
 		{6}
-	{6}
-
-	static {1} FindItemByField<T, TV>(List<T>[] listArray, int field, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, System.Func<T, IteratorStatus> receiver) where T : {1}
-	{5}
-		_FindResult = null;
-		if(receiver != null)
-		{5}
-			List<T> list = listArray[field];
-			int position = DataItemBase.BinarySearch<T, TV>(list, comparison, get_value, value);
-			if(position >= 0)
-			{5}
-				for(int index = position; index < list.Count; index ++)
-				{5}
-					T item = list[index];
-					if(comparison(get_value(item), value) != 0 || receiver(item) == IteratorStatus.BREAK)
-					{5}
-						break;
-					{6}
-				{6}
-			{6}
-		{6}
-		return _FindResult;
 	{6}
 ";
 		//0:paserName
@@ -331,9 +309,9 @@ public class FlatBuffersLoaderBuilder
 		//5:fieldtype
 		//6:compare fun
 		fun = @"	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
-	public static {4} Find{0}({5} value, System.Func<{4}, IteratorStatus> receiver = null)
+	public static Query<{4}, {5}> Query{0}({5} value)
 	{2}
-		BuildKeyByIndex({1}); return FindItemByField<{4}, {5}>(_listArray, {1}, value, {6}, {4}._Get{0}, receiver != null ? receiver : _ReceiveOne);
+		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_listArray[{1}], value, {6}, {4}._Get{0});
 	{3}
 
 ";

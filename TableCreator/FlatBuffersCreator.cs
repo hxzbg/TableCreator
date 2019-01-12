@@ -80,7 +80,7 @@ class FlatBuffersCreator
 		builder.StartObject(1);
 		builder.AddOffset(0, vector, 0);
 		builder.Finish(builder.EndObject());
-
+		
 		return builder;
 	}
 
