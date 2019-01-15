@@ -65,8 +65,10 @@
     <Compile Include="FlatBuffers\Offset.cs" />
     <Compile Include="FlatBuffers\Struct.cs" />
     <Compile Include="FlatBuffers\Table.cs" />
+    <Compile Include="LocalizationSaver.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="LocalizationLoader.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

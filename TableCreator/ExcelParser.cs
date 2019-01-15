@@ -57,32 +57,93 @@ public class ExcelParser
 		return obj.ToString();
 	}
 
-	static bool IsMatch(string input, string pattern)
-	{
-		Match match = Regex.Match(input, pattern);
-		return match != null && match.Success && match.Length == input.Length;
-	}
-
-	static ExceFieldType GetStringType(string value)
+	//适用于特定场合，仅简单检查特征，未对数据有效性作校验。
+	public static unsafe ExceFieldType GetStringType(string value)
 	{
 		if(string.IsNullOrEmpty(value))
 		{
 			return ExceFieldType.None;
 		}
-		else if(value == "0")
+
+		int digit = -1;	//首次出现数字的位置;
+		int zero = -1;  //首次出现0的位置
+		int dot = -1;   //点的位置
+		int index = 0;
+
+		value = value.Trim();
+		int length = value.Length;
+		fixed(char* ptr = value)
 		{
-			return ExceFieldType.INTEGER;
+			char c = '\0';
+			while((c = *(ptr + index)) != 0)
+			{
+				switch(c)
+				{
+					case '0':
+						{
+							if(zero < 0)
+							{
+								zero = index;
+							}
+
+							if (digit < 0)
+							{
+								digit = index;
+							}
+						}
+						break;
+
+					case '1':
+					case '2':
+					case '3':
+					case '4':
+					case '5':
+					case '6':
+					case '7':
+					case '8':
+					case '9':
+						{
+							if(digit < 0)
+							{
+								digit = index;
+							}
+						}
+						break;
+
+					case '-':
+						{
+							if(index != 0)
+							{
+								return ExceFieldType.TEXT;
+							}
+						}
+						break;
+
+					case '.':
+						{
+							if(index == 0 || dot > 0)
+							{
+								return ExceFieldType.TEXT;
+							}
+							dot = index;
+						}
+						break;
+
+					default:
+						return ExceFieldType.TEXT;
+				}
+				index++;
+			}
 		}
 
-		if (IsMatch(value, "[0-9]\\d*[.][0-9]*$"))
+		if(digit >= 0 && index >= length)
 		{
-			return ExceFieldType.REAL;
+			if(dot == 0 || dot == (index - 1) || digit < 0)	//第一位是小数点，最后一位是小数点，没有找到数字
+			{
+				return ExceFieldType.TEXT;
+			}
+			return dot > 0 ? ExceFieldType.REAL : ExceFieldType.INTEGER;
 		}
-		else if (IsMatch(value, "[1-9]\\d*$"))
-		{
-			return ExceFieldType.INTEGER;
-		}
-		
 		return ExceFieldType.TEXT;
 	}
 

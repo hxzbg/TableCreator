@@ -1,13 +1,7 @@
 ﻿using System;
-using System.IO;
+using System.Text;
 using FlatBuffers;
 using System.Collections.Generic;
-
-public enum IteratorStatus
-{
-	CONTINUE = 0,
-	BREAK,
-}
 
 public class DataItemBase
 {
@@ -36,13 +30,103 @@ public class DataItemBase
 		return a.CompareTo(b);
 	}
 
+	public static string __GetString(Table table, int vtableOffset, int start)
+	{
+		int o = table.__offset(vtableOffset);
+		return table.__string(table.__vector(o) + start * 4);
+	}
+
+	public static string[] __GetStringArgs(Table table, int vtableOffset, int start)
+	{
+		string[] args = null;
+		int offset = table.__offset(vtableOffset);
+		int length = table.__vector_len(offset);
+		if (length > start)
+		{
+			int o = table.__vector(offset);
+			args = new string[length - start];
+			for (int i = start; i < length; i++)
+			{
+				args[i - start] = table.__string(o + i * 4);
+			}
+		}
+		return args;
+	}
+
+	static StringBuilder _builder = new StringBuilder();
+	public static void __BuildString(ref string str, string key, string[] args)
+	{
+		if (str == null)
+		{
+			if (key.StartsWith("__"))
+			{
+				//str = Localization.Get(key);
+				if (args != null && args.Length > 0 && string.IsNullOrEmpty(str) == false)
+				{
+					_builder.Remove(0, _builder.Length);
+
+					bool rebuild = false;
+					unsafe
+					{
+						fixed (char* ptr = str)
+						{
+							int chunklen = 0;
+							int length = str.Length;
+							for (int index = 0; index < length; index++)
+							{
+								char c = *(ptr + index);
+								if (c == '}')
+								{
+									if (index >= 2 && *(ptr + index - 2) == '{')
+									{
+										int offset = *(ptr + index - 1) - 'A';
+										if (offset >= 0 && offset < args.Length)
+										{
+											rebuild = true;
+											_builder.Append(str, index - chunklen, chunklen - 2);
+											if (string.IsNullOrEmpty(args[offset]) == false)
+											{
+												_builder.Append(args[offset]);
+											}
+											chunklen = 0;
+											continue;
+										}
+									}
+								}
+								chunklen++;
+							}
+
+							if (rebuild)
+							{
+								str = _builder.ToString();
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				str = key;
+			}
+		}
+	}
+
 	public static int BinarySearch<T, TV>(List<T> list, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, TV value) where T : DataItemBase
 	{
 		int result = -1;
-		if(list != null && list.Count > 0)
+		if (list != null && list.Count > 0)
 		{
 			int low = 0;
 			int high = list.Count - 1;
+			if (comparison(get_value(list[low]), value) > 0)
+			{
+				return -1;
+			}
+			else if (high > low && (comparison(get_value(list[high]), value) < 0))
+			{
+				return -1;
+			}
+
 			while (low <= high)
 			{
 				int middle = (low + high) / 2;
@@ -63,14 +147,10 @@ public class DataItemBase
 			}
 		}
 
-		if(result > 0)
+		while (result > 0 && comparison(get_value(list[result - 1]), value) == 0)
 		{
-			while(comparison(get_value(list[result - 1]), value) == 0)
-			{
-				result -= 1;
-			}
+			result -= 1;
 		}
-
 		return result;
 	}
 
@@ -88,7 +168,7 @@ public class DataItemBase
 		_dispose += action;
 	}
 
-	public static void Dispose()
+	public static void DisposeAll()
 	{
 		try
 		{
@@ -115,7 +195,7 @@ public class Query<T> : System.IDisposable where T : DataItemBase
 
 	public T Value
 	{
-		get { return _list != null && _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
 	}
 
 	public static Query<T> Create(List<T> list)
@@ -128,7 +208,7 @@ public class Query<T> : System.IDisposable where T : DataItemBase
 
 	public bool Step()
 	{
-		if (_list != null && _list.Count > 0 && _position >= 0)
+		if (_list.Count > 0 && _position >= 0)
 		{
 			if (_position >= _list.Count)
 			{
@@ -162,7 +242,7 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 
 	public T Value
 	{
-		get { return _list != null && _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
 	}
 
 	public static Query<T, TV> Create(List<T> list, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value)
@@ -178,26 +258,11 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 
 	public bool Step()
 	{
-		if (_list != null && _list.Count > 0 && _position >= 0)
+		if (_list.Count > 0 && _position >= 0)
 		{
 			if (_position >= _list.Count)
 			{
 				_position = DataItemBase.BinarySearch<T, TV>(_list, _comparison, _get_value, _value);
-				if (_position >= 0)
-				{
-					for (int index = _position; index < _list.Count; index++)
-					{
-						T item = _list[index];
-						if (_comparison(_get_value(item), _value) != 0)
-						{
-							break;
-						}
-						else
-						{
-							_position = index;
-						}
-					}
-				}
 			}
 			else
 			{

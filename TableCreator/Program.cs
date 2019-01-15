@@ -14,6 +14,7 @@ namespace TableCreator
 			{
 				string bin_out = "";
 				string sharp_out = "";
+				string dict_path = "";
 				List<string> list = new List<string>();
 				for (int index = 0; index < args.Length; index++)
 				{
@@ -28,6 +29,10 @@ namespace TableCreator
 
 							case "-c":
 								sharp_out = args[++index];
+								break;
+
+							case "-d":
+								dict_path = args[++index];
 								break;
 						}
 					}
@@ -53,7 +58,7 @@ namespace TableCreator
 				XmlElement config_node = null;
 				XmlDocument doc = new XmlDocument();
 				string exeRoot = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
-				string configPath = Path.Combine(exeRoot, "TableCreatorOutput.xml");
+				string configPath = Path.Combine(exeRoot, "TableCreatorConfig.xml");
 				if (string.IsNullOrEmpty(bin_out) || string.IsNullOrEmpty(sharp_out))
 				{
 					if (File.Exists(configPath))
@@ -71,6 +76,11 @@ namespace TableCreator
 							{
 								sharp_out = config_node.GetAttribute("sharp_output");
 							}
+
+							if (config_node.HasAttribute("dictionary"))
+							{
+								dict_path = config_node.GetAttribute("dictionary");
+							}
 						}
 					}
 				}
@@ -82,6 +92,7 @@ namespace TableCreator
 				}
 				config_node.SetAttribute("bytes_output", bin_out);
 				config_node.SetAttribute("sharp_output", sharp_out);
+				config_node.SetAttribute("dictionary", dict_path);
 				doc.Save(configPath);
 
 				if(string.IsNullOrEmpty(bin_out) || string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
@@ -94,13 +105,32 @@ namespace TableCreator
 					sharp_out = Path.Combine(exeRoot, sharp_out);
 				}
 
+				ExcelParser dict_parser = null;
+				Dictionary<string, string> user_dict = new Dictionary<string, string>();
+				if (string.IsNullOrEmpty(dict_path) == false)
+				{
+					if (string.IsNullOrEmpty(Path.GetPathRoot(dict_path)))
+					{
+						dict_path = Path.Combine(exeRoot, dict_path);
+					}
+
+					Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
+					dict_parser = new ExcelParser(dict_path);
+					for(int i = 0; i < dict_parser.RowCount; i ++)
+					{
+						string k = dict_parser.GetString(i, 0);
+						string v = dict_parser.GetString(i, 1);
+						user_dict[v] = k;
+					}
+				}
+
 				for (int i = 0; i < list.Count; i++)
 				{
 					string file = list[i];
 					Console.WriteLine(string.Format("{0} / {1} : {2}", i + 1, list.Count, file));
 					ExcelParser parser = new ExcelParser(file);
 
-					FlatBuffersCreator creator = new FlatBuffersCreator(parser);
+					FlatBuffersCreator creator = new FlatBuffersCreator(parser, user_dict);
 					Console.WriteLine(string.Format("write bin to {0}", creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out)));
 
 					FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser);
@@ -109,6 +139,40 @@ namespace TableCreator
 
 					Console.WriteLine();
 				}
+
+				if(dict_parser != null)
+				{
+					string[] knownLanguages = new string[dict_parser.FieldCount - 1];
+					for(int i = 1; i < dict_parser.FieldCount; i ++)
+					{
+						knownLanguages[i - 1] = dict_parser.GetFieldName(i);
+					}
+
+					Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
+					for(int i = 0; i < dict_parser.RowCount; i ++)
+					{
+						string[] contents = new string[knownLanguages.Length];
+						for(int j = 1; j < dict_parser.FieldCount; j ++)
+						{
+							contents[j - 1] = dict_parser.GetString(i, j);
+						}
+						string key = dict_parser.GetString(i, 0);
+						dictionary[key] = contents;
+						user_dict.Remove(contents[0]);
+					}
+
+					Dictionary<string, string>.Enumerator em = user_dict.GetEnumerator();
+					while (em.MoveNext())
+					{
+						KeyValuePair<string, string> pair = em.Current;
+						string[] contents = new string[knownLanguages.Length];
+						contents[0] = pair.Key;
+						dictionary[pair.Value] = contents;
+					}
+
+					LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
+				}
+				
 			}
 			catch(System.Exception e)
 			{

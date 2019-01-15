@@ -54,37 +54,40 @@ public class FlatBuffersLoaderBuilder
 		//Item属性
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
-			string typeName = "int";
-			string funName = "bb.GetInt";
-			string defValue = "0";
 			string fieldName = buildName(_excel.GetFieldName(index));
-			switch (_excel.GetFieldType(index))
+			ExceFieldType excelType = _excel.GetFieldType(index);
+			switch (excelType)
 			{
+				case ExceFieldType.INTEGER:
 				case ExceFieldType.REAL:
 					{
-						typeName = "float";
-						funName = "bb.GetFloat";
-						defValue = "0.0f";
+						string typeName = excelType == ExceFieldType.INTEGER ? "int" : "float";
+						string funName = excelType == ExceFieldType.INTEGER ? "bb.GetInt" : "bb.GetFloat";
+						string defValue = excelType == ExceFieldType.INTEGER ? "0" : "0.0f";
+
+						//0:typeName
+						//1:funName
+						//2:defValue;
+						//3:{
+						//4:}
+						//5:id
+						//6:fieldName
+						file.AppendFormat("\tpublic {0} {6} {3} get {3} int o = __p.__offset({5}); return o != 0 ? __p.{1}(o + __p.bb_pos) : {2}; {4} {4}\n", typeName, funName, defValue, "{", "}", 4 + index * 2, fieldName);
 					}
 					break;
 
 				case ExceFieldType.TEXT:
 					{
-						typeName = "string";
-						funName = "__string";
-						defValue = "null";
+						//0:fieldName
+						//1:id
+						//2:funName
+						//3:{
+						//4:}
+						file.AppendFormat("\tpublic string {0} {3} get {3} return {2}(__p, {1}, 0); {4} {4}\n", fieldName + "_Key", 4 + index * 2, "DataItemBase.__GetString", "{", "}");
+						file.AppendFormat("\tpublic string[] {0} {3} get {3} return {2}(__p, {1}, 1); {4} {4}\n", fieldName + "_Args", 4 + index * 2, "DataItemBase.__GetStringArgs", "{", "}");
 					}
 					break;
 			}
-
-			//0:typeName
-			//1:funName
-			//2:defValue;
-			//3:{
-			//4:}
-			//5:id
-			//6:fieldName
-			file.AppendFormat("\tpublic {0} {6} {3} get {3} int o = __p.__offset({5}); return o != 0 ? __p.{1}(o + __p.bb_pos) : {2}; {4} {4}\n", typeName, funName, defValue, "{", "}", 4 + index * 2, fieldName);
 		}
 
 		file.AppendLine("}\n");
@@ -138,13 +141,21 @@ public class FlatBuffersLoaderBuilder
 		//成员变量和属性,以及Get回调方法
 		fun = @"	{0} _{1} = {3};
 	public {0} {1} {4} get {4} return _{1}; {5} {5}
-	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item._{1}; {5};
+	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item.{1}; {5};
+
+";
+		string fun_string = @"	{0} _{1} = null;
+	{0} _{1}_Key = null;
+	{0}[] _{1}_Args = null;
+	public {0} {1} {4} get {4} DataItemBase.__BuildString(ref _{1}, _{1}_Key, _{1}_Args); return _{1}; {5} {5}
+	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item.{1}; {5};
 
 ";
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
 			string typeName = "int";
 			string defValue = "0";
+			string format = fun;
 			switch (_excel.GetFieldType(index))
 			{
 				case ExceFieldType.REAL:
@@ -156,6 +167,7 @@ public class FlatBuffersLoaderBuilder
 
 				case ExceFieldType.TEXT:
 					{
+						format = fun_string;
 						typeName = "string";
 						defValue = "null";
 					}
@@ -168,7 +180,7 @@ public class FlatBuffersLoaderBuilder
 			//3:defValue;
 			//4:{
 			//5:}
-			file.AppendFormat(fun, typeName, buildName(_excel.GetFieldName(index)), parserItemName, defValue, "{", "}");
+			file.AppendFormat(format, typeName, buildName(_excel.GetFieldName(index)), parserItemName, defValue, "{", "}");
 		}
 
 		//Comparison数组，排序时用到
@@ -208,8 +220,17 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("\t{");
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
-			fun = buildName(_excel.GetFieldName(index));
-			file.AppendFormat("\t\t_{0} = item.{0};\n", fun);
+			string fieldName = buildName(_excel.GetFieldName(index));
+			ExceFieldType excelType = _excel.GetFieldType(index);
+			if(excelType == ExceFieldType.TEXT)
+			{
+				file.AppendFormat("\t\t_{0}_Key = item.{0}_Key;\n", fieldName);
+				file.AppendFormat("\t\t_{0}_Args = item.{0}_Args;\n", fieldName);
+			}
+			else if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.REAL)
+			{
+				file.AppendFormat("\t\t_{0} = item.{0};\n", fieldName);
+			}
 		}
 		file.AppendLine("\t\tOnPostParse();\n\t}");
 		file.AppendLine("}\n");
@@ -219,11 +240,12 @@ public class FlatBuffersLoaderBuilder
 	{
 		string fun = @"public static partial class {0}
 {5}
-	static List<{1}>[] _listArray = null;
+	static List<{1}> _list = null;
+	static List<{1}>[] _mainKey = null;
 
 	public static void LoadDatas()
 	{5}
-		if (_listArray != null)
+		if (_mainKey != null)
 		{5}
 			return;
 		{6}
@@ -234,40 +256,40 @@ public class FlatBuffersLoaderBuilder
 			return;
 		{6}
 
-		_listArray = new List<{1}>[{4}];
+		_mainKey = new List<{1}>[{4}];
 		FlatBuffersData.{3} structList = FlatBuffersData.{3}.GetRootAs{3}(data);
-		List<{1}> list = new List<{1}>(structList.ListLength);
+		_list = new List<{1}>(structList.ListLength);
 		for (int index = 0; index < structList.ListLength; index++)
 		{5}
 			{1} item = new {1}();
 			item.Parse(structList.List(index).Value);
-			list.Add(item);
+			_list.Add(item);
 		{6}
 		data.Dispose();
 		DataItemBase.OnPostLoaded({0}.Dispose);
-		list.Sort({1}._Comparison[0]);
-		_listArray[0] = list;
 	{6}
 
 	public static void Dispose()
 	{5}
-		if(_listArray != null)
+		if(_list != null)
 		{5}
-			List<{1}> list = _listArray[0];
-			for(int index = 0; index < list.Count; index ++)
+			for(int index = 0; index < _list.Count; index ++)
 			{5}
-				{1} item = list[index];
+				{1} item = _list[index];
 				item.Dispose();
 			{6}
+		{6}
 
-			for (int index = 1; index < _listArray.Length; index ++)
+		if(_mainKey != null)
+		{5}
+			for (int index = 0; index < _mainKey.Length; index ++)
 			{5}
-				list = _listArray[index];
+				List<{1}> list = _mainKey[index];
 				if(list != null)
 				{5}
 					list.Clear();
 				{6}
-				_listArray[index] = null;
+				_mainKey[index] = null;
 			{6}
 		{6}
 	{6}
@@ -275,17 +297,17 @@ public class FlatBuffersLoaderBuilder
 	public static Query<{1}> Query()
 	{5}
 		LoadDatas();
-		return Query<{1}>.Create(_listArray[0]);
+		return Query<{1}>.Create(_list);
 	{6}
 
 	static void BuildKeyByIndex(int index)
 	{5}
 		LoadDatas();
-		if (_listArray[index] == null)
+		if (_list != null && _mainKey[index] == null)
 		{5}
-			List<{1}> list = new List<{1}>(_listArray[0].Count);
-			list.AddRange(_listArray[0]);
-			_listArray[index] = list;
+			List<{1}> list = new List<{1}>(_list.Count);
+			list.AddRange(_list);
+			_mainKey[index] = list;
 
 			list.Sort({1}._Comparison[index]);
 		{6}
@@ -311,31 +333,27 @@ public class FlatBuffersLoaderBuilder
 		fun = @"	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value)
 	{2}
-		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_listArray[{1}], value, {6}, {4}._Get{0});
+		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_mainKey[{1}], value, {6}, {4}._Get{0});
 	{3}
 
 ";
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
-			string fieldType = "int";
-			string compareFun = "DataItemBase.CompareInt";
-			switch (_excel.GetFieldType(index))
+			ExceFieldType excelType = _excel.GetFieldType(index);
+			switch (excelType)
 			{
+				case ExceFieldType.INTEGER:
 				case ExceFieldType.REAL:
 					{
-						fieldType = "float";
-						compareFun = "DataItemBase.CompareSingle";
+						string fieldType = excelType == ExceFieldType.INTEGER ? "int" : "float";
+						string compareFun = excelType == ExceFieldType.INTEGER ? "DataItemBase.CompareInt" : "DataItemBase.CompareSingle";
+						file.AppendFormat(fun, buildName(_excel.GetFieldName(index)), index, "{", "}", parserItemName, fieldType, compareFun);
 					}
 					break;
 
-				case ExceFieldType.TEXT:
-					{
-						fieldType = "string";
-						compareFun = "DataItemBase.CompareString";
-					}
+				default:
 					break;
 			}
-			file.AppendFormat(fun, buildName(_excel.GetFieldName(index)), index, "{", "}", parserItemName, fieldType, compareFun);
 		}
 
 		file.AppendLine("}");
