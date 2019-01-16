@@ -278,6 +278,7 @@ public class FlatBuffersLoaderBuilder
 				{1} item = _list[index];
 				item.Dispose();
 			{6}
+			_list = null;
 		{6}
 
 		if(_mainKey != null)
@@ -291,8 +292,11 @@ public class FlatBuffersLoaderBuilder
 				{6}
 				_mainKey[index] = null;
 			{6}
+			_mainKey = null;
 		{6}
 	{6}
+
+	public static int count {5} get {5} LoadDatas(); return _list != null ? _list.Count : 0; {6} {6}
 
 	public static Query<{1}> Query()
 	{5}
@@ -330,7 +334,8 @@ public class FlatBuffersLoaderBuilder
 		//4:parserItemName
 		//5:fieldtype
 		//6:compare fun
-		fun = @"	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
+		fun = @"	public static {4} Max{0} {2} get {2} BuildKeyByIndex({1}); int count = _mainKey[{1}].Count; return count > 0 ? _mainKey[{1}][count - 1] : null; {3} {3}
+	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value)
 	{2}
 		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_mainKey[{1}], value, {6}, {4}._Get{0});

@@ -8,9 +8,10 @@ public static partial class LocalizationSaver
 	static int CreateString(string str, Dictionary<string, int> dict, FlatBufferBuilder builder)
 	{
 		int offset = 0;
+		str = string.IsNullOrEmpty(str) ? "" : str;
 		if (dict.TryGetValue(str, out offset) == false)
 		{
-			offset = builder.CreateString(str).Value;
+			offset = builder.CreateString(str.Replace("\\n", "\n")).Value;
 			dict[str] = offset;
 		}
 		return offset;

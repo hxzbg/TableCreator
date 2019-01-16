@@ -156,7 +156,7 @@ public class DataItemBase
 
 	public static ByteBuffer Load(string path)
 	{
-		return null;
+		return new ByteBuffer(System.IO.File.ReadAllBytes(@"F:\github\TableCreator\TableCreator\bin\Debug\bytes\type_light.bytes"));
 	}
 
 	public static void OnPostLoaded(System.Action action)

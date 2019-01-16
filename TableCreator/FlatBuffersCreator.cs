@@ -30,8 +30,8 @@ class FlatBuffersCreator
 		}
 	}
 
-	static int _lastkeyIndex = 0;
-	static StringUnit SplitString(string input, Dictionary<string, string> user_dict)
+	static Dictionary<string, int> _lastkeyIndex = new Dictionary<string, int>();
+	static StringUnit SplitString(string input, string keyname, Dictionary<string, string> user_dict)
 	{
 		string keyWord = "";
 		StringUnit unit = new StringUnit();
@@ -61,15 +61,30 @@ class FlatBuffersCreator
 				}
 
 				string key_index = null;
-				if (user_dict.TryGetValue(keyWord, out key_index) == false)
+				Dictionary<string, string>.Enumerator em = user_dict.GetEnumerator();
+				while(em.MoveNext())
 				{
-					key_index = string.Format("__ak_{0}", _lastkeyIndex++);
-					while (user_dict.ContainsValue(key_index))
+					KeyValuePair<string, string> pair = em.Current;
+					if(pair.Value == keyWord && pair.Key.StartsWith("__"))
 					{
-						key_index = string.Format("__ak_{0}", _lastkeyIndex++);
+						key_index = pair.Key;
+						break;
 					}
-					user_dict[keyWord] = key_index;
 				}
+
+				int keyid = 0;
+				_lastkeyIndex.TryGetValue(keyname, out keyid);
+				if (string.IsNullOrEmpty(key_index))
+				{
+					do
+					{
+						key_index = string.Format("__{0}_{1}", keyname, keyid++);
+					}
+					while (user_dict.ContainsKey(key_index));
+					user_dict[key_index] = keyWord;
+				}
+				_lastkeyIndex[keyname] = keyid;
+
 				unit._in = input;
 				unit._out = keyWord;
 				unit._outkey = key_index;
@@ -95,6 +110,7 @@ class FlatBuffersCreator
 			return null;
 		}
 
+		string excelname = _excel.FileName;
 		FlatBufferBuilder builder = new FlatBufferBuilder(1);
 		//提前收集所有字符串
 		Dictionary<ulong, StringUnit> unitResult = new Dictionary<ulong, StringUnit>();
@@ -113,7 +129,7 @@ class FlatBuffersCreator
 
 					int offset = 0;
 					ulong grid_key = makeKey(index, i);
-					StringUnit unit = SplitString(key, _dict);
+					StringUnit unit = SplitString(key, excelname, _dict);
 					string str = unit._outkey;
 					if (dict.TryGetValue(str, out offset) == false)
 					{

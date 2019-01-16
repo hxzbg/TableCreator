@@ -107,21 +107,18 @@ namespace TableCreator
 
 				ExcelParser dict_parser = null;
 				Dictionary<string, string> user_dict = new Dictionary<string, string>();
-				if (string.IsNullOrEmpty(dict_path) == false)
+				if (string.IsNullOrEmpty(dict_path) == false && string.IsNullOrEmpty(Path.GetPathRoot(dict_path)))
 				{
-					if (string.IsNullOrEmpty(Path.GetPathRoot(dict_path)))
-					{
-						dict_path = Path.Combine(exeRoot, dict_path);
-					}
+					dict_path = Path.Combine(exeRoot, dict_path);
+				}
 
-					Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
-					dict_parser = new ExcelParser(dict_path);
-					for(int i = 0; i < dict_parser.RowCount; i ++)
-					{
-						string k = dict_parser.GetString(i, 0);
-						string v = dict_parser.GetString(i, 1);
-						user_dict[v] = k;
-					}
+				Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
+				dict_parser = new ExcelParser(dict_path);
+				for (int i = 0; i < dict_parser.RowCount; i++)
+				{
+					string k = dict_parser.GetString(i, 0);
+					string v = dict_parser.GetString(i, 1);
+					user_dict[k] = v;
 				}
 
 				for (int i = 0; i < list.Count; i++)
@@ -140,39 +137,36 @@ namespace TableCreator
 					Console.WriteLine();
 				}
 
-				if(dict_parser != null)
+				UserDictionarySaver.Merge(dict_path, user_dict);
+
+				dict_parser.Dispose();
+				dict_parser = new ExcelParser(dict_path);
+				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
-					string[] knownLanguages = new string[dict_parser.FieldCount - 1];
-					for(int i = 1; i < dict_parser.FieldCount; i ++)
-					{
-						knownLanguages[i - 1] = dict_parser.GetFieldName(i);
-					}
-
-					Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
-					for(int i = 0; i < dict_parser.RowCount; i ++)
-					{
-						string[] contents = new string[knownLanguages.Length];
-						for(int j = 1; j < dict_parser.FieldCount; j ++)
-						{
-							contents[j - 1] = dict_parser.GetString(i, j);
-						}
-						string key = dict_parser.GetString(i, 0);
-						dictionary[key] = contents;
-						user_dict.Remove(contents[0]);
-					}
-
-					Dictionary<string, string>.Enumerator em = user_dict.GetEnumerator();
-					while (em.MoveNext())
-					{
-						KeyValuePair<string, string> pair = em.Current;
-						string[] contents = new string[knownLanguages.Length];
-						contents[0] = pair.Key;
-						dictionary[pair.Value] = contents;
-					}
-
-					LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
+					string k = dict_parser.GetString(i, 0);
+					string v = dict_parser.GetString(i, 1);
+					user_dict[k] = v;
 				}
-				
+
+				string[] knownLanguages = new string[dict_parser.FieldCount - 1];
+				for(int index = 1; index < dict_parser.FieldCount; index ++)
+				{
+					knownLanguages[index - 1] = dict_parser.GetFieldName(index);
+				}
+
+				Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
+				for (int i = 0; i < dict_parser.RowCount; i++)
+				{
+					string key = dict_parser.GetString(i, 0);
+					string[] contents = new string[knownLanguages.Length];
+					for (int j = 1; j < dict_parser.FieldCount; j++)
+					{
+						contents[j - 1] = dict_parser.GetString(i, j);
+					}
+					dictionary[key] = contents;
+				}
+				LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
+				dict_parser.Dispose();
 			}
 			catch(System.Exception e)
 			{
