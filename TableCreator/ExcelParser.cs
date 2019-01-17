@@ -62,7 +62,7 @@ public class ExcelParser
 	{
 		if(string.IsNullOrEmpty(value))
 		{
-			return ExceFieldType.None;
+			return ExceFieldType.TEXT;
 		}
 
 		int digit = -1;	//首次出现数字的位置;

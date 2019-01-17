@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Xml;
+using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 
@@ -13,6 +14,7 @@ namespace TableCreator
 			try
 			{
 				string bin_out = "";
+				string mysql_out = "";
 				string sharp_out = "";
 				string dict_path = "";
 				List<string> list = new List<string>();
@@ -33,6 +35,10 @@ namespace TableCreator
 
 							case "-d":
 								dict_path = args[++index];
+								break;
+
+							case "-m":
+								mysql_out = args[++index];
 								break;
 						}
 					}
@@ -77,6 +83,11 @@ namespace TableCreator
 								sharp_out = config_node.GetAttribute("sharp_output");
 							}
 
+							if (config_node.HasAttribute("mysql_output"))
+							{
+								mysql_out = config_node.GetAttribute("mysql_output");
+							}
+
 							if (config_node.HasAttribute("dictionary"))
 							{
 								dict_path = config_node.GetAttribute("dictionary");
@@ -92,17 +103,23 @@ namespace TableCreator
 				}
 				config_node.SetAttribute("bytes_output", bin_out);
 				config_node.SetAttribute("sharp_output", sharp_out);
+				config_node.SetAttribute("mysql_output", mysql_out);
 				config_node.SetAttribute("dictionary", dict_path);
 				doc.Save(configPath);
 
-				if(string.IsNullOrEmpty(bin_out) || string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
+				if(string.IsNullOrEmpty(bin_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
 				{
 					bin_out = Path.Combine(exeRoot, bin_out);
 				}
 
-				if (string.IsNullOrEmpty(sharp_out) || string.IsNullOrEmpty(Path.GetPathRoot(sharp_out)))
+				if (string.IsNullOrEmpty(sharp_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(sharp_out)))
 				{
 					sharp_out = Path.Combine(exeRoot, sharp_out);
+				}
+
+				if (string.IsNullOrEmpty(mysql_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(mysql_out)))
+				{
+					mysql_out = Path.Combine(exeRoot, mysql_out);
 				}
 
 				ExcelParser dict_parser = null;
@@ -114,6 +131,11 @@ namespace TableCreator
 
 				Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
 				dict_parser = new ExcelParser(dict_path);
+				if(dict_parser.FieldCount <= 0)
+				{
+					throw new System.Exception("没有找到任何字典数据，必须配置字典文件");
+				}
+
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
 					string k = dict_parser.GetString(i, 0);
@@ -121,17 +143,32 @@ namespace TableCreator
 					user_dict[k] = v;
 				}
 
+				StringBuilder mysql = new StringBuilder();
 				for (int i = 0; i < list.Count; i++)
 				{
 					string file = list[i];
 					Console.WriteLine(string.Format("{0} / {1} : {2}", i + 1, list.Count, file));
 					ExcelParser parser = new ExcelParser(file);
 
-					FlatBuffersCreator creator = new FlatBuffersCreator(parser, user_dict);
-					Console.WriteLine(string.Format("write bin to {0}", creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out)));
+					if (string.IsNullOrEmpty(bin_out) == false)
+					{
+						FlatBuffersCreator creator = new FlatBuffersCreator(parser, user_dict);
+						Console.WriteLine(string.Format("write bin to {0}", creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out)));
+					}
 
-					FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser);
-					Console.WriteLine(string.Format("write code to {0}", builder.Build(sharp_out)));
+					if (string.IsNullOrEmpty(sharp_out) == false)
+					{
+						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser);
+						Console.WriteLine(string.Format("write code to {0}", builder.Build(sharp_out)));
+					}
+
+					if (string.IsNullOrEmpty(mysql_out) == false)
+					{
+						MySqlBuilder builder = new MySqlBuilder(parser, user_dict);
+						builder.Append(mysql);
+						Console.WriteLine(string.Format("build sql code for {0}", parser.FileName));
+					}
+
 					parser.Dispose();
 
 					Console.WriteLine();
@@ -141,6 +178,13 @@ namespace TableCreator
 
 				dict_parser.Dispose();
 				dict_parser = new ExcelParser(dict_path);
+
+				if (mysql.Length > 0)
+				{
+					MySqlBuilder.AppendDict(dict_parser, mysql);
+					MySqlBuilder.Save(mysql_out, mysql);
+				}
+
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
 					string k = dict_parser.GetString(i, 0);

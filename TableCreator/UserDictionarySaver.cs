@@ -32,7 +32,10 @@ public class UserDictionarySaver
 		}
 
 		ExcelPackage package = null;
-		File.SetAttributes(path, FileAttributes.Archive);
+		if(File.Exists(path))
+		{
+			File.SetAttributes(path, FileAttributes.Archive);
+		}
 		using (FileStream stream = File.Open(path, FileMode.Open, FileAccess.Read))
 		{
 			int rows = 0;

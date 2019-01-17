@@ -14,7 +14,7 @@ class FlatBuffersCreator
 		_excel = parser;
 	}
 
-	class StringUnit
+	public class StringUnit
 	{
 		static string[] _empty = new string[0];
 		public string _in;
@@ -31,7 +31,7 @@ class FlatBuffersCreator
 	}
 
 	static Dictionary<string, int> _lastkeyIndex = new Dictionary<string, int>();
-	static StringUnit SplitString(string input, string keyname, Dictionary<string, string> user_dict)
+	public static StringUnit SplitString(string input, string keyname, Dictionary<string, string> user_dict)
 	{
 		string keyWord = "";
 		StringUnit unit = new StringUnit();
