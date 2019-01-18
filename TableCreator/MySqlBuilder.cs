@@ -19,7 +19,7 @@ public class MySqlBuilder
 		{
 			return "";
 		}
-		return input.Replace("\"", "\\\"").Replace("\'", "\\'");
+		return input.Replace("\"", "\\\"").Replace("\'", "\\'").Replace("\n", "\\n");
 	}
 
 	public void Append(StringBuilder builder)
