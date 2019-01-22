@@ -16,7 +16,7 @@ public enum ExceFieldType
 public class ExcelParser
 {
 	string[] _fieldNames = null;
-	ExceFieldType[] _fieldTypes = null;
+	int[] _fieldTypeStatus = null;
 
 	List<string[]> _contentList = null;
 
@@ -47,6 +47,12 @@ public class ExcelParser
 		}
 	}
 
+	void PushFieldType(int field, ExceFieldType type)
+	{
+		int index = field * 4 + (int)type;
+		_fieldTypeStatus[index] = _fieldTypeStatus[index] + 1;
+	}
+
 	static string GetString(IExcelDataReader excelReader, int index)
 	{
 		object obj = excelReader.GetValue(index);
@@ -62,7 +68,7 @@ public class ExcelParser
 	{
 		if(string.IsNullOrEmpty(value))
 		{
-			return ExceFieldType.TEXT;
+			return ExceFieldType.None;
 		}
 
 		int digit = -1;	//首次出现数字的位置;
@@ -186,7 +192,7 @@ public class ExcelParser
 				int index = 0;
 				_rowCount = excelReader.RowCount - 1;
 				_contentList = new List<string[]>(_fieldCount);
-				_fieldTypes = new ExceFieldType[_fieldCount];
+				_fieldTypeStatus = new int[_fieldCount * 4];
 				while (excelReader.Read())
 				{
 					index++;
@@ -194,11 +200,7 @@ public class ExcelParser
 					for (int i = 0; i < _fieldCount; i++)
 					{
 						contents[i] = GetString(excelReader, fieldids[i]);
-						ExceFieldType contentType = GetStringType(contents[i]);
-						if (_fieldTypes[i] < contentType)
-						{
-							_fieldTypes[i] = contentType;
-						}
+						PushFieldType(i, GetStringType(contents[i]));
 					}
 					_contentList.Add(contents);
 				}
@@ -234,7 +236,17 @@ public class ExcelParser
 
 	public ExceFieldType GetFieldType(int field)
 	{
-		return _fieldTypes != null && field >= 0 && field < _fieldTypes.Length ? _fieldTypes[field] : ExceFieldType.None;
+		int start = field * 4;
+		ExceFieldType fieldType = ExceFieldType.TEXT;
+		for(int index = 3; index >= 1; index --)
+		{
+			if(_fieldTypeStatus[start + index] > 0)
+			{
+				fieldType = (ExceFieldType)index;
+				break;
+			}
+		}
+		return fieldType;
 	}
 
 	public void Dispose()

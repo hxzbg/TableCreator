@@ -202,6 +202,11 @@ namespace TableCreator
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
 					string key = dict_parser.GetString(i, 0);
+					if (string.IsNullOrEmpty(key) || key.StartsWith("//"))
+					{
+						continue;
+					}
+
 					string[] contents = new string[knownLanguages.Length];
 					for (int j = 1; j < dict_parser.FieldCount; j++)
 					{
@@ -209,7 +214,11 @@ namespace TableCreator
 					}
 					dictionary[key] = contents;
 				}
-				LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
+
+				if(string.IsNullOrEmpty(bin_out) == false)
+				{
+					LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
+				}
 				dict_parser.Dispose();
 			}
 			catch(System.Exception e)

@@ -30,6 +30,11 @@ class FlatBuffersCreator
 		}
 	}
 
+	static public bool IsHex(char ch)
+	{
+		return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
+	}
+
 	static Dictionary<string, int> _lastkeyIndex = new Dictionary<string, int>();
 	public static StringUnit SplitString(string input, string keyname, Dictionary<string, string> user_dict)
 	{
@@ -58,6 +63,37 @@ class FlatBuffersCreator
 				else
 				{
 					keyWord = input;
+				}
+
+				int key_len = keyWord.Length;
+				int index = keyWord.IndexOf('[');
+				while(index >= 0)
+				{
+					int endIndex = keyWord.IndexOf(']', index);
+					if(endIndex < 0)
+					{
+						break;
+					}
+					int offset = endIndex - index;
+					if (offset == 7 || offset == 9)
+					{
+						bool isHexColor = true;
+						for(int j = 1; j <= offset - 1; j ++)
+						{
+							if(IsHex(keyWord[index + j]) == false)
+							{
+								isHexColor = false;
+								break;
+							}
+						}
+
+						if(isHexColor)
+						{
+							string hexColor = keyWord.Substring(index, offset + 1);
+							keyWord = keyWord.Replace(hexColor, hexColor.ToUpper());
+						}
+					}
+					index = keyWord.IndexOf('[', index + 1);
 				}
 
 				string key_index = null;
