@@ -42,12 +42,12 @@ public class MySqlBuilder
 					default:
 						{
 							FlatBuffersCreator.StringUnit unit = FlatBuffersCreator.SplitString(str, _excel.FileName, _dict);
-							builder.AppendFormat("'{0},", unit._outkey);
+							builder.AppendFormat("'{0}", unit._outkey);
 							if(unit._out_pars != null && unit._out_pars.Length > 0)
 							{
 								for (int k = 0; k < unit._out_pars.Length; k ++)
 								{
-									builder.AppendFormat("{0},", unit._out_pars[k]);
+									builder.AppendFormat(",{0}", unit._out_pars[k]);
 								}
 							}
 							builder.Append("'");
