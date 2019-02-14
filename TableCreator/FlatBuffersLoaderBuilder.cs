@@ -44,6 +44,7 @@ public class FlatBuffersLoaderBuilder
 		//2:{
 		//3:}
 		string fun = @"	private Table __p;
+	public Table table {1} get {1} return __p; {2} {2}
 	public ByteBuffer ByteBuffer {1} get {1} return __p.bb; {2} {2}
 	public void __init(int _i, ByteBuffer _bb) {1} __p.bb_pos = _i; __p.bb = _bb; {2}
 	public {0} __assign(int _i, ByteBuffer _bb) {1} __init(_i, _bb); return this; {2}
@@ -73,18 +74,6 @@ public class FlatBuffersLoaderBuilder
 						//5:id
 						//6:fieldName
 						file.AppendFormat("\tpublic {0} {6} {3} get {3} int o = __p.__offset({5}); return o != 0 ? __p.{1}(o + __p.bb_pos) : {2}; {4} {4}\n", typeName, funName, defValue, "{", "}", 4 + index * 2, fieldName);
-					}
-					break;
-
-				case ExceFieldType.TEXT:
-					{
-						//0:fieldName
-						//1:id
-						//2:funName
-						//3:{
-						//4:}
-						file.AppendFormat("\tpublic string {0} {3} get {3} return {2}(__p, {1}, 0); {4} {4}\n", fieldName + "_Key", 4 + index * 2, "DataItemBase.__GetString", "{", "}");
-						file.AppendFormat("\tpublic string[] {0} {3} get {3} return {2}(__p, {1}, 1); {4} {4}\n", fieldName + "_Args", 4 + index * 2, "DataItemBase.__GetStringArgs", "{", "}");
 					}
 					break;
 			}
@@ -126,7 +115,7 @@ public class FlatBuffersLoaderBuilder
 	public void Dispose()
 	{1}
 ";
-		file.AppendFormat(fun, parserItemName, "{");
+		file.AppendFormat(fun, parserItemName, "{", "}");
 
 		//实现Dispose函数
 		for(int i = 0; i < _excel.FieldCount; i ++)
@@ -139,16 +128,16 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("\t}\n");
 
 		//成员变量和属性,以及Get回调方法
+
+		file.AppendLine("\tTable __p;\n");
+
 		fun = @"	{0} _{1} = {3};
 	public {0} {1} {4} get {4} return _{1}; {5} {5}
 	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item.{1}; {5};
 
 ";
 		string fun_string = @"	{0} _{1} = null;
-	{0} _{1}_Key = null;
-	{0}[] _{1}_Args = null;
-	public {0} {1} {4} get {4} DataItemBase.__BuildString(ref _{1}, _{1}_Key, _{1}_Args); return _{1}; {5} {5}
-	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item.{1}; {5};
+	public {0} {1} {4} get {4} if(_{1} == null) DataItemBase.__BuildString(ref _{1}, __p, {6}); return _{1}; {5} {5}
 
 ";
 		for (int index = 0; index < _excel.FieldCount; index++)
@@ -180,7 +169,7 @@ public class FlatBuffersLoaderBuilder
 			//3:defValue;
 			//4:{
 			//5:}
-			file.AppendFormat(format, typeName, buildName(_excel.GetFieldName(index)), parserItemName, defValue, "{", "}");
+			file.AppendFormat(format, typeName, buildName(_excel.GetFieldName(index)), parserItemName, defValue, "{", "}", 4 + index * 2);
 		}
 
 		//Comparison数组，排序时用到
@@ -217,17 +206,12 @@ public class FlatBuffersLoaderBuilder
 
 		//Parse函数
 		file.AppendFormat("\tinternal void Parse(FlatBuffersData.{0} item)\n", structItemName);
-		file.AppendLine("\t{");
+		file.AppendLine("\t{\n\t\t__p=item.table;");
 		for (int index = 0; index < _excel.FieldCount; index++)
 		{
 			string fieldName = buildName(_excel.GetFieldName(index));
 			ExceFieldType excelType = _excel.GetFieldType(index);
-			if(excelType == ExceFieldType.TEXT)
-			{
-				file.AppendFormat("\t\t_{0}_Key = item.{0}_Key;\n", fieldName);
-				file.AppendFormat("\t\t_{0}_Args = item.{0}_Args;\n", fieldName);
-			}
-			else if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.REAL)
+			if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.REAL)
 			{
 				file.AppendFormat("\t\t_{0} = item.{0};\n", fieldName);
 			}
@@ -242,7 +226,7 @@ public class FlatBuffersLoaderBuilder
 {5}
 	static List<{1}> _list = null;
 	static List<{1}>[] _mainKey = null;
-
+	static ByteBuffer _data = null;
 	public static void LoadDatas()
 	{5}
 		if (_mainKey != null)
@@ -250,14 +234,20 @@ public class FlatBuffersLoaderBuilder
 			return;
 		{6}
 
-		ByteBuffer data = DataItemBase.Load(""{2}"");
-		if (data == null)
+		if (_data != null)
+		{5}
+			_data.Dispose();
+			_data = null;
+		{6}
+
+		_data = DataItemBase.Load(""{2}"");
+		if (_data == null)
 		{5}
 			return;
 		{6}
 
 		_mainKey = new List<{1}>[{4}];
-		FlatBuffersData.{3} structList = FlatBuffersData.{3}.GetRootAs{3}(data);
+		FlatBuffersData.{3} structList = FlatBuffersData.{3}.GetRootAs{3}(_data);
 		_list = new List<{1}>(structList.ListLength);
 		for (int index = 0; index < structList.ListLength; index++)
 		{5}
@@ -265,12 +255,17 @@ public class FlatBuffersLoaderBuilder
 			item.Parse(structList.List(index).Value);
 			_list.Add(item);
 		{6}
-		data.Dispose();
 		DataItemBase.OnPostLoaded({0}.Dispose);
 	{6}
 
 	public static void Dispose()
 	{5}
+		if(_data != null)
+		{5}
+			_data.Dispose();
+			_data = null;
+		{6}
+
 		if(_list != null)
 		{5}
 			for(int index = 0; index < _list.Count; index ++)
