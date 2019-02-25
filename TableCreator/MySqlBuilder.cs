@@ -36,21 +36,37 @@ public class MySqlBuilder
 				{
 					case ExceFieldType.INTEGER:
 					case ExceFieldType.REAL:
-						builder.AppendFormat("\'{0}\'", str);
+						{
+							if(string.IsNullOrEmpty(str))
+							{
+								builder.Append("null");
+							}
+							else
+							{
+								builder.AppendFormat("\'{0}\'", str);
+							}
+						}
 						break;
 
 					default:
 						{
 							FlatBuffersCreator.StringUnit unit = FlatBuffersCreator.SplitString(str, _excel.FileName, _dict);
-							builder.AppendFormat("'{0}", unit._outkey);
-							if(unit._out_pars != null && unit._out_pars.Length > 0)
+							if (string.IsNullOrEmpty(unit._outkey))
 							{
-								for (int k = 0; k < unit._out_pars.Length; k ++)
-								{
-									builder.AppendFormat(",{0}", unit._out_pars[k]);
-								}
+								builder.Append("null");
 							}
-							builder.Append("'");
+							else
+							{
+								builder.AppendFormat("'{0}", unit._outkey);
+								if (unit._out_pars != null && unit._out_pars.Length > 0)
+								{
+									for (int k = 0; k < unit._out_pars.Length; k++)
+									{
+										builder.AppendFormat(",{0}", unit._out_pars[k]);
+									}
+								}
+								builder.Append("'");
+							}
 						}
 						break;
 				}
