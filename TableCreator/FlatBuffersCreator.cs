@@ -7,6 +7,14 @@ using System.Text.RegularExpressions;
 class FlatBuffersCreator
 {
 	ExcelParser _excel = null;
+	string excelHeader
+	{
+		get
+		{
+			//生成并返回表头
+			return "";
+		}
+	}
 	Dictionary<string, string> _dict = null;
 	public FlatBuffersCreator(ExcelParser parser, Dictionary<string, string> dict)
 	{
@@ -209,7 +217,7 @@ class FlatBuffersCreator
 				{
 					case ExceFieldType.INTEGER:
 						{
-							builder.AddInt(j, _excel.GetInt(i, j), 0);
+							builder.AddLong(j, _excel.GetInt(i, j), 0);
 						}
 						break;
 

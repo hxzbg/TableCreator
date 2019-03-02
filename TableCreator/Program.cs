@@ -2,7 +2,6 @@
 using System.IO;
 using System.Xml;
 using System.Text;
-using System.Threading;
 using System.Collections.Generic;
 
 namespace TableCreator
@@ -122,6 +121,9 @@ namespace TableCreator
 					mysql_out = Path.Combine(exeRoot, mysql_out);
 				}
 
+				string fbspath = Path.Combine(exeRoot, "FBS.txt");
+				Dictionary<string, ExcelHeaderItem[]> excelheaders = ExcelParser.ParseExcelHeaderFromFbs(fbspath);
+
 				ExcelParser dict_parser = null;
 				Dictionary<string, string> user_dict = new Dictionary<string, string>();
 				if (string.IsNullOrEmpty(dict_path) == false && string.IsNullOrEmpty(Path.GetPathRoot(dict_path)))
@@ -130,7 +132,7 @@ namespace TableCreator
 				}
 
 				Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
-				dict_parser = new ExcelParser(dict_path);
+				dict_parser = new ExcelParser(dict_path, null, FileAccess.ReadWrite);
 				if(dict_parser.FieldCount <= 0)
 				{
 					throw new System.Exception("没有找到任何字典数据，必须配置字典文件");
@@ -148,7 +150,7 @@ namespace TableCreator
 				{
 					string file = list[i];
 					Console.WriteLine(string.Format("{0} / {1} : {2}", i + 1, list.Count, file));
-					ExcelParser parser = new ExcelParser(file);
+					ExcelParser parser = new ExcelParser(file, excelheaders);
 
 					if (string.IsNullOrEmpty(bin_out) == false)
 					{
@@ -177,7 +179,7 @@ namespace TableCreator
 				UserDictionarySaver.Merge(dict_path, user_dict);
 
 				dict_parser.Dispose();
-				dict_parser = new ExcelParser(dict_path);
+				dict_parser = new ExcelParser(dict_path, null);
 
 				if (mysql.Length > 0)
 				{
@@ -220,6 +222,8 @@ namespace TableCreator
 					LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
 				}
 				dict_parser.Dispose();
+
+				ExcelParser.SaveExcelHeaderToFbs(fbspath, excelheaders);
 			}
 			catch(System.Exception e)
 			{

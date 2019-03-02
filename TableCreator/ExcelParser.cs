@@ -13,12 +13,28 @@ public enum ExceFieldType
 	TEXT,
 }
 
+public class ExcelHeaderItem
+{
+	public int fieldid;
+	public string fieldname;
+	public ExceFieldType fieldtype;
+}
+
 public class ExcelParser
 {
 	string[] _fieldNames = null;
 	int[] _fieldTypeStatus = null;
 
 	List<string[]> _contentList = null;
+
+	ExcelHeaderItem[] _excelheader;
+	public ExcelHeaderItem[] ExcelHeader
+	{
+		get
+		{
+			return _excelheader;
+		}
+	}
 
 	string _filename = null;
 	public string FileName
@@ -51,6 +67,71 @@ public class ExcelParser
 	{
 		int index = field * 4 + (int)type;
 		_fieldTypeStatus[index] = _fieldTypeStatus[index] + 1;
+	}
+
+	public static Dictionary<string, ExcelHeaderItem[]> ParseExcelHeaderFromFbs(string fbspath)
+	{
+		//从文本读取并解析
+		Dictionary<string, ExcelHeaderItem[]> dict = new Dictionary<string, ExcelHeaderItem[]>();
+		if (string.IsNullOrEmpty(fbspath) == false && File.Exists(fbspath))
+		{
+			string[] lines = File.ReadAllLines(fbspath);
+			for(int i = 0; i < lines.Length; i ++)
+			{
+				string[] parts = lines[i].Split(',');
+				if(parts == null || parts.Length < 3)
+				{
+					continue;
+				}
+
+				string name = parts[0];
+				int fieldCount = (parts.Length - 1) / 2;
+				ExcelHeaderItem[] items = new ExcelHeaderItem[fieldCount];
+				for (int j = 0; j < fieldCount; j ++)
+				{
+					ExcelHeaderItem item = new ExcelHeaderItem();
+					item.fieldname = parts[j * 2 + 1];
+					item.fieldid = j;
+					switch(parts[j * 2 + 2])
+					{
+						case "INTEGER":
+							item.fieldtype = ExceFieldType.INTEGER;
+							break;
+
+						case "REAL":
+							item.fieldtype = ExceFieldType.REAL;
+							break;
+
+						default:
+							item.fieldtype = ExceFieldType.TEXT;
+							break;
+					}
+					items[j] = item;
+				}
+				dict[name] = items;
+			}
+		}
+		return dict;
+	}
+
+	public static void SaveExcelHeaderToFbs(string fbspath, Dictionary<string, ExcelHeaderItem[]> dict)
+	{
+		StringBuilder path = new StringBuilder();
+		foreach (var item in dict)
+		{
+			path.Append(item.Key);
+			ExcelHeaderItem[] items = item.Value;
+			for(int i = 0; i < items.Length; i ++)
+			{
+				path.Append(",");
+				ExcelHeaderItem temp = items[i];
+				path.Append(temp.fieldname);
+				path.Append(",");
+				path.Append(temp.fieldtype);
+			}
+			path.AppendLine();
+		}
+		File.WriteAllText(fbspath, path.ToString());
 	}
 
 	static string GetString(IExcelDataReader excelReader, int index)
@@ -153,7 +234,7 @@ public class ExcelParser
 		return ExceFieldType.TEXT;
 	}
 
-	public ExcelParser(string excelPath)
+	public ExcelParser(string excelPath, Dictionary<string, ExcelHeaderItem[]> headersdict, FileAccess access = FileAccess.Read)
 	{
 		string extension = Path.GetExtension(excelPath);
 		if (string.IsNullOrEmpty(extension) == false)
@@ -167,8 +248,13 @@ public class ExcelParser
 		}
 
 		_filename = Path.GetFileNameWithoutExtension(excelPath);
-		using (FileStream excelFile = File.Open(excelPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+		using (FileStream excelFile = File.Open(excelPath, FileMode.Open, access, FileShare.Read))
 		{
+			if (headersdict != null)
+			{
+				headersdict.TryGetValue(_filename, out _excelheader);
+			}
+
 			IExcelDataReader excelReader = extension == ".xls" ? ExcelReaderFactory.CreateBinaryReader(excelFile) : ExcelReaderFactory.CreateOpenXmlReader(excelFile);
 
 			//读标题
@@ -179,14 +265,49 @@ public class ExcelParser
 				for (int i = 0; i < excelReader.FieldCount; i++)
 				{
 					string fieldname = GetString(excelReader, i).Trim();
-					if (string.IsNullOrEmpty(fieldname) == false)
+					fieldlist.Add(fieldname);
+					fieldids.Add(i);
+				}
+
+				if(_excelheader == null)
+				{
+					for(int i = fieldlist.Count - 1; i >= 0; i --)
 					{
-						fieldlist.Add(fieldname);
-						fieldids.Add(i);
+						if(string.IsNullOrEmpty(fieldlist[i]))
+						{
+							fieldlist.RemoveAt(i);
+							fieldids.RemoveAt(i);
+						}
+					}
+
+					_fieldNames = fieldlist.ToArray();
+					_fieldCount = _fieldNames.Length;
+					_excelheader = new ExcelHeaderItem[_fieldCount];
+					for (int i = 0; i < _fieldCount; i++)
+					{
+						ExcelHeaderItem item = new ExcelHeaderItem();
+						item.fieldid = i;
+						item.fieldname = _fieldNames[i];
+						item.fieldtype = ExceFieldType.None;
+						_excelheader[i] = item;
 					}
 				}
-				_fieldNames = fieldlist.ToArray();
-				_fieldCount = _fieldNames.Length;
+				else
+				{
+					List<int> list2 = new List<int>();
+					List<string> list1 = new List<string>();
+					for(int i = 0; i < _excelheader.Length; i ++)
+					{
+						ExcelHeaderItem item = _excelheader[i];
+						list1.Add(item.fieldname);
+						list2.Add(fieldlist.IndexOf(item.fieldname));
+					}
+
+					fieldids = list2;
+					fieldlist = list1;
+					_fieldNames = fieldlist.ToArray();
+					_fieldCount = _fieldNames.Length;
+				}
 
 				//检查数据类型
 				int index = 0;
@@ -200,13 +321,30 @@ public class ExcelParser
 					for (int i = 0; i < _fieldCount; i++)
 					{
 						contents[i] = GetString(excelReader, fieldids[i]);
-						PushFieldType(i, GetStringType(contents[i]));
+						if(_excelheader[i].fieldtype == ExceFieldType.None)
+						{
+							PushFieldType(i, GetStringType(contents[i]));
+						}
+						else
+						{
+							PushFieldType(i, _excelheader[i].fieldtype);
+						}
 					}
 					_contentList.Add(contents);
 				}
 			}
 			excelFile.Dispose();
 			excelReader.Dispose();
+
+			for (int i = 0; i < FieldCount; i++)
+			{
+				_excelheader[i].fieldtype = GetFieldType(i);
+			}
+
+			if (headersdict != null)
+			{
+				headersdict[_filename] = _excelheader;
+			}
 		}
 	}
 
@@ -218,14 +356,22 @@ public class ExcelParser
 	public int GetInt(int row, int field)
 	{
 		int var = 0;
-		int.TryParse(GetString(row, field), out var);
+		string str = GetString(row, field);
+		if(string.IsNullOrEmpty(str) == false && int.TryParse(str, out var) == false)
+		{
+			Console.WriteLine(string.Format("convert to int failed, row : {0}, col : {1}, content : {2}", row, field, str));
+		}
 		return var;
 	}
 
 	public float GetSingle(int row, int field)
 	{
 		float var = 0;
-		float.TryParse(GetString(row, field), out var);
+		string str = GetString(row, field);
+		if (string.IsNullOrEmpty(str) == false && float.TryParse(str, out var) == false)
+		{
+			Console.WriteLine(string.Format("convert to float failed, row : {0}, col : {1}, content : {2}", row, field, str));
+		}
 		return var;
 	}
 
