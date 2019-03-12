@@ -9,8 +9,10 @@ public enum ExceFieldType
 {
 	None = 0,
 	INTEGER,
+	LONG,
 	REAL,
 	TEXT,
+	Count
 }
 
 public class ExcelHeaderItem
@@ -65,7 +67,7 @@ public class ExcelParser
 
 	void PushFieldType(int field, ExceFieldType type)
 	{
-		int index = field * 4 + (int)type;
+		int index = field * (int)ExceFieldType.Count + (int)type;
 		_fieldTypeStatus[index] = _fieldTypeStatus[index] + 1;
 	}
 
@@ -96,6 +98,10 @@ public class ExcelParser
 					{
 						case "INTEGER":
 							item.fieldtype = ExceFieldType.INTEGER;
+							break;
+
+						case "LONG":
+							item.fieldtype = ExceFieldType.LONG;
 							break;
 
 						case "REAL":
@@ -233,7 +239,19 @@ public class ExcelParser
 			{
 				return ExceFieldType.TEXT;
 			}
-			return dot > 0 ? ExceFieldType.REAL : ExceFieldType.INTEGER;
+
+			if(dot > 0)
+			{
+				return ExceFieldType.REAL;
+			}
+
+			long l = 0;
+			long.TryParse(value, out l);
+			if(l >= int.MaxValue)
+			{
+				return ExceFieldType.LONG;
+			}
+			return ExceFieldType.INTEGER;
 		}
 		return ExceFieldType.TEXT;
 	}
@@ -322,7 +340,7 @@ public class ExcelParser
 				int index = 0;
 				_rowCount = excelReader.RowCount - 1;
 				_contentList = new List<string[]>(_fieldCount);
-				_fieldTypeStatus = new int[_fieldCount * 4];
+				_fieldTypeStatus = new int[_fieldCount * (int)ExceFieldType.Count];
 				while (excelReader.Read())
 				{
 					index++;
@@ -350,7 +368,7 @@ public class ExcelParser
 				_excelheader[i].fieldtype = GetFieldType(i);
 			}
 
-			if (headersdict != null && headersdict.ContainsKey(_filename) == false)
+			if (headersdict != null)
 			{
 				headersdict[_filename] = _excelheader;
 			}
@@ -362,11 +380,11 @@ public class ExcelParser
 		return _fieldNames != null && index >= 0 && index < _fieldNames.Length ? _fieldNames[index] : string.Empty;
 	}
 
-	public int GetInt(int row, int field)
+	public long GetLong(int row, int field)
 	{
-		int var = 0;
+		long var = 0;
 		string str = GetString(row, field);
-		if(string.IsNullOrEmpty(str) == false && int.TryParse(str, out var) == false)
+		if(string.IsNullOrEmpty(str) == false && long.TryParse(str, out var) == false)
 		{
 			Console.WriteLine(string.Format("convert to int failed, row : {0}, col : {1}, content : {2}", row, field, str));
 		}
@@ -391,9 +409,9 @@ public class ExcelParser
 
 	public ExceFieldType GetFieldType(int field)
 	{
-		int start = field * 4;
+		int start = field * (int)ExceFieldType.Count;
 		ExceFieldType fieldType = ExceFieldType.TEXT;
-		for(int index = 3; index >= 1; index --)
+		for(int index = (int)ExceFieldType.Count - 1; index >= 1; index --)
 		{
 			if(_fieldTypeStatus[start + index] > 0)
 			{

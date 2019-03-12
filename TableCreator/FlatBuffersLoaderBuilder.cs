@@ -33,6 +33,9 @@ public class FlatBuffersLoaderBuilder
 		return sb.ToString();
 	}
 
+	static string[] _typeName = { "int", "long", "float" };
+	static string[] _funName = { "bb.GetInt", "bb.GetLong", "bb.GetFloat" };
+	static string[] _defValue = { "0", "0", "0.0f" };
 	void BuildStructItem(StringBuilder file, string itemName, string listName)
 	{
 		file.AppendFormat("struct {0} : IFlatbufferObject\n", itemName);
@@ -60,11 +63,12 @@ public class FlatBuffersLoaderBuilder
 			switch (excelType)
 			{
 				case ExceFieldType.INTEGER:
+				case ExceFieldType.LONG:
 				case ExceFieldType.REAL:
 					{
-						string typeName = excelType == ExceFieldType.INTEGER ? "int" : "float";
-						string funName = excelType == ExceFieldType.INTEGER ? "bb.GetInt" : "bb.GetFloat";
-						string defValue = excelType == ExceFieldType.INTEGER ? "0" : "0.0f";
+						string typeName = _typeName[(int)excelType - 1];
+						string funName = _funName[(int)excelType - 1];
+						string defValue = _defValue[(int)excelType - 1];
 
 						//0:typeName
 						//1:funName
@@ -147,6 +151,13 @@ public class FlatBuffersLoaderBuilder
 			string format = fun;
 			switch (_excel.GetFieldType(index))
 			{
+				case ExceFieldType.LONG:
+					{
+						typeName = "long";
+						defValue = "0";
+					}
+					break;
+
 				case ExceFieldType.REAL:
 					{
 						typeName = "float";
@@ -182,6 +193,12 @@ public class FlatBuffersLoaderBuilder
 			string typeName = "DataItemBase.CompareInt";
 			switch (_excel.GetFieldType(index))
 			{
+				case ExceFieldType.LONG:
+					{
+						typeName = "DataItemBase.CompareLong";
+					}
+					break;
+
 				case ExceFieldType.REAL:
 					{
 						typeName = "DataItemBase.CompareSingle";
@@ -211,7 +228,7 @@ public class FlatBuffersLoaderBuilder
 		{
 			string fieldName = buildName(_excel.GetFieldName(index));
 			ExceFieldType excelType = _excel.GetFieldType(index);
-			if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.REAL)
+			if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.LONG || excelType == ExceFieldType.REAL)
 			{
 				file.AppendFormat("\t\t_{0} = item.{0};\n", fieldName);
 			}
@@ -220,6 +237,8 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("}\n");
 	}
 
+	static string[] _fieldType = { "int", "long", "float"};
+	static string[] _compareFun = { "DataItemBase.CompareInt", "DataItemBase.CompareLong", "DataItemBase.CompareSingle" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
 		string fun = @"public static partial class {0}
@@ -343,10 +362,11 @@ public class FlatBuffersLoaderBuilder
 			switch (excelType)
 			{
 				case ExceFieldType.INTEGER:
+				case ExceFieldType.LONG:
 				case ExceFieldType.REAL:
 					{
-						string fieldType = excelType == ExceFieldType.INTEGER ? "int" : "float";
-						string compareFun = excelType == ExceFieldType.INTEGER ? "DataItemBase.CompareInt" : "DataItemBase.CompareSingle";
+						string fieldType = _fieldType[(int)excelType - 1];
+						string compareFun = _compareFun[(int)excelType - 1];
 						file.AppendFormat(fun, buildName(_excel.GetFieldName(index)), index, "{", "}", parserItemName, fieldType, compareFun);
 					}
 					break;

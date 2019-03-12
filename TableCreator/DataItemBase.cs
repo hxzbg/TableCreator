@@ -16,6 +16,15 @@ public class DataItemBase
 		return a > b ? 1 : -1;
 	}
 
+	public static int CompareLong(long a, long b)
+	{
+		if (a == b)
+		{
+			return 0;
+		}
+		return a > b ? 1 : -1;
+	}
+
 	public static int CompareSingle(float a, float b)
 	{
 		if (a == b)

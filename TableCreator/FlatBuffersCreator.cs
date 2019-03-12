@@ -217,7 +217,13 @@ class FlatBuffersCreator
 				{
 					case ExceFieldType.INTEGER:
 						{
-							builder.AddInt(j, _excel.GetInt(i, j), 0);
+							builder.AddInt(j, (int)_excel.GetLong(i, j), 0);
+						}
+						break;
+
+					case ExceFieldType.LONG:
+						{
+							builder.AddLong(j, _excel.GetLong(i, j), 0);
 						}
 						break;
 
