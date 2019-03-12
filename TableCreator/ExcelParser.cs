@@ -136,12 +136,16 @@ public class ExcelParser
 
 	static string GetString(IExcelDataReader excelReader, int index)
 	{
-		object obj = excelReader.GetValue(index);
-		if(obj == null || obj.GetType() == typeof(System.DBNull))
+		if(index >= 0)
 		{
-			return string.Empty;
+			object obj = excelReader.GetValue(index);
+			if (obj == null || obj.GetType() == typeof(System.DBNull))
+			{
+				return string.Empty;
+			}
+			return obj.ToString();
 		}
-		return obj.ToString();
+		return "";
 	}
 
 	//适用于特定场合，仅简单检查特征，未对数据有效性作校验。
@@ -296,11 +300,16 @@ public class ExcelParser
 				{
 					List<int> list2 = new List<int>();
 					List<string> list1 = new List<string>();
-					for(int i = 0; i < _excelheader.Length; i ++)
+					for (int i = 0; i < _excelheader.Length; i ++)
 					{
 						ExcelHeaderItem item = _excelheader[i];
+						int pos = fieldlist.IndexOf(item.fieldname);
 						list1.Add(item.fieldname);
-						list2.Add(fieldlist.IndexOf(item.fieldname));
+						list2.Add(pos);
+						if (pos < 0)
+						{
+							Console.WriteLine(string.Format("没有找到字段 : {0}", item.fieldname));
+						}
 					}
 
 					fieldids = list2;
@@ -341,7 +350,7 @@ public class ExcelParser
 				_excelheader[i].fieldtype = GetFieldType(i);
 			}
 
-			if (headersdict != null)
+			if (headersdict != null && headersdict.ContainsKey(_filename) == false)
 			{
 				headersdict[_filename] = _excelheader;
 			}
