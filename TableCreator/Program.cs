@@ -132,7 +132,20 @@ namespace TableCreator
 				}
 
 				Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
-				dict_parser = new ExcelParser(dict_path, null, FileAccess.ReadWrite);
+				{
+					FileAttributes attributes = File.GetAttributes(dict_path);
+					if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+					{
+						Console.WriteLine(string.Format("{0}只读，强制执行会造成本地化文本丢失的问题，继续请按'y'键。", dict_path));
+						if (Console.ReadKey().KeyChar != 'y')
+						{
+							return;
+						}
+						Console.WriteLine();
+					}
+				}
+
+				dict_parser = new ExcelParser(dict_path, null, FileAccess.Read);
 				if(dict_parser.FieldCount <= 0)
 				{
 					throw new System.Exception("没有找到任何字典数据，必须配置字典文件");
