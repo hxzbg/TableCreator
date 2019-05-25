@@ -348,7 +348,7 @@ public class FlatBuffersLoaderBuilder
 		//4:parserItemName
 		//5:fieldtype
 		//6:compare fun
-		fun = @"	public static {4} Max{0} {2} get {2} BuildKeyByIndex({1}); int count = _mainKey[{1}].Count; return count > 0 ? _mainKey[{1}][count - 1] : null; {3} {3}
+		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> comparete = null) {2} BuildKeyByIndex({1}); return DataItemBase.FindMax<{4}>(_mainKey[{1}], comparete); {3}
 	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value)
 	{2}
