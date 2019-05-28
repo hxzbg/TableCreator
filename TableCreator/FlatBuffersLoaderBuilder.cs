@@ -312,10 +312,10 @@ public class FlatBuffersLoaderBuilder
 
 	public static int count {5} get {5} LoadDatas(); return _list != null ? _list.Count : 0; {6} {6}
 
-	public static Query<{1}> Query()
+	public static Query<{1}> Query(System.Func<{1}, bool> filter = null)
 	{5}
 		LoadDatas();
-		return Query<{1}>.Create(_list);
+		return Query<{1}>.Create(_list, filter);
 	{6}
 
 	static void BuildKeyByIndex(int index)
@@ -348,11 +348,11 @@ public class FlatBuffersLoaderBuilder
 		//4:parserItemName
 		//5:fieldtype
 		//6:compare fun
-		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> comparete = null) {2} BuildKeyByIndex({1}); return DataItemBase.FindMax<{4}>(_mainKey[{1}], comparete); {3}
+		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} BuildKeyByIndex({1}); return DataItemBase.FindMax<{4}>(_mainKey[{1}], filter); {3}
 	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
-	public static Query<{4}, {5}> Query{0}({5} value)
+	public static Query<{4}, {5}> Query{0}({5} value, System.Func<{4}, bool> filter = null)
 	{2}
-		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_mainKey[{1}], value, {6}, {4}._Get{0});
+		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_mainKey[{1}], value, {6}, {4}._Get{0}, filter);
 	{3}
 
 ";
