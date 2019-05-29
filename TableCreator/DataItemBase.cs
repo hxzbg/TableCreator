@@ -3,6 +3,80 @@ using System.Text;
 using FlatBuffers;
 using System.Collections.Generic;
 
+public class DataItemPaser
+{
+	string _name;
+	public string Name
+	{
+		get
+		{
+			return _name;
+		}
+	}
+
+	string[] _fieldNames;
+	public string[] FieldNames
+	{
+		get
+		{
+			return _fieldNames;
+		}
+	}
+
+	string[] _fieldTypes;
+	public string[] FieldTypes
+	{
+		get
+		{
+			return _fieldTypes;
+		}
+	}
+
+	int _columnsCount;
+	public int ColumnsCount
+	{
+		get
+		{
+			return _columnsCount;
+		}
+	}
+
+	public DataItemPaser(string name, string[] filedNames, string[] fieldTypes, int columnsCount, System.Func<int, string[]> fieldParser)
+	{
+		_name = name;
+		_fieldNames = filedNames;
+		_fieldTypes = fieldTypes;
+		_columnsCount = columnsCount;
+		_fieldParser = fieldParser;
+	}
+
+	System.Func<int, string[]> _fieldParser = null;
+	public System.Func<int, string[]> FieldParser
+	{
+		get
+		{
+			return _fieldParser;
+		}
+	}
+
+	static List<System.Func<DataItemPaser>> _parserList = new List<System.Func<DataItemPaser>>();
+	public static List<System.Func<DataItemPaser>> ParserList
+	{
+		get
+		{
+			return _parserList;
+		}
+	}
+
+	public static void PushDataItemParser(System.Func<DataItemPaser> parser)
+	{
+		if(parser != null && _parserList.Contains(parser) == false)
+		{
+			_parserList.Add(parser);
+		}
+	}
+}
+
 public class DataItemBase
 {
 	static System.Action _dispose = null;
@@ -74,6 +148,10 @@ public class DataItemBase
 		if(string.IsNullOrEmpty(key) == false)
 		{
 			__BuildString(ref str, key, DataItemBase.__GetStringArgs(table, offset, 1));
+		}
+		else
+		{
+			str = "";
 		}
 	}
 
@@ -182,7 +260,29 @@ public class DataItemBase
 		return result;
 	}
 
-	public static ByteBuffer Load(string path)
+	public static T FindMax<T>(List<T> list, System.Func<T, bool> checker = null) where T : DataItemBase
+	{
+		if (list != null && list.Count > 0)
+		{
+			if(checker == null)
+			{
+				return list[list.Count - 1];
+			}
+
+			for(int index = list.Count - 1; index >= 0; index --)
+			{
+				T item = list[index];
+				if(item == null || checker(item) == false)
+				{
+					continue;
+				}
+				return item;
+			}
+		}
+		return null;
+	}
+
+	public static ByteBuffer Load(string asset)
 	{
 		return null;
 	}
@@ -220,16 +320,18 @@ public class Query<T> : System.IDisposable where T : DataItemBase
 {
 	int _position;
 	List<T> _list;
+	System.Func<T, bool> _filter = null;
 
 	public T Value
 	{
 		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
 	}
 
-	public static Query<T> Create(List<T> list)
+	public static Query<T> Create(List<T> list, System.Func<T, bool> checker = null)
 	{
 		Query<T> query = new Query<T>();
 		query._list = list;
+		query._filter = checker;
 		query._position = list.Count;
 		return query;
 	}
@@ -238,18 +340,22 @@ public class Query<T> : System.IDisposable where T : DataItemBase
 	{
 		if (_list.Count > 0 && _position >= 0)
 		{
-			if (_position >= _list.Count)
+			do
 			{
-				_position = 0;
-			}
-			else
-			{
-				_position++;
 				if (_position >= _list.Count)
 				{
-					_position = -1;
+					_position = 0;
+				}
+				else
+				{
+					_position++;
+					if (_position >= _list.Count)
+					{
+						_position = -1;
+					}
 				}
 			}
+			while (_position >= 0 && _filter != null && _filter(_list[_position]) == false);
 		}
 		return _position >= 0;
 	}
@@ -258,6 +364,11 @@ public class Query<T> : System.IDisposable where T : DataItemBase
 	{
 		_list = null;
 	}
+
+	public void Release()
+	{
+		Dispose();
+	}
 }
 
 public class Query<T, TV> : System.IDisposable where T : DataItemBase
@@ -265,6 +376,7 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 	int _position;
 	List<T> _list;
 	TV _value = default(TV);
+	System.Func<T, bool> _filter = null;
 	System.Func<T, TV> _get_value = null;
 	System.Func<TV, TV, int> _comparison = null;
 
@@ -273,11 +385,12 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
 	}
 
-	public static Query<T, TV> Create(List<T>list, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value)
+	public static Query<T, TV> Create(List<T>list, TV value, System.Func<TV, TV, int> comparison, System.Func<T, TV> get_value, System.Func<T, bool> checker = null)
 	{
 		Query<T, TV> query = new Query<T, TV>();
 		query._list = list;
 		query._value = value;
+		query._filter = checker;
 		query._comparison = comparison;
 		query._get_value = get_value;
 		query._position = list.Count;
@@ -293,28 +406,31 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 
 		if (_position >= 0)
 		{
-			if (_position >= _list.Count)
+			do
 			{
-				_position = DataItemBase.BinarySearch<T, TV>(_list, _comparison, _get_value, _value);
-			}
-			else
-			{
-				_position++;
 				if (_position >= _list.Count)
 				{
-					_position = -1;
+					_position = DataItemBase.BinarySearch<T, TV>(_list, _comparison, _get_value, _value);
 				}
 				else
 				{
-					T item = _list[_position];
-					if(_comparison(_get_value(item), _value) != 0)
+					_position++;
+					if (_position >= _list.Count)
 					{
 						_position = -1;
 					}
+					else
+					{
+						T item = _list[_position];
+						if (_comparison(_get_value(item), _value) != 0)
+						{
+							_position = -1;
+						}
+					}
 				}
 			}
+			while (_position >= 0 && _filter != null && _filter(_list[_position]) == false);
 		}
-
 		return _position >= 0;
 	}
 
@@ -323,5 +439,10 @@ public class Query<T, TV> : System.IDisposable where T : DataItemBase
 		_list = null;
 		_get_value = null;
 		_comparison = null;
+	}
+
+	public void Release()
+	{
+		Dispose();
 	}
 }

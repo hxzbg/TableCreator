@@ -241,7 +241,10 @@ public class FlatBuffersLoaderBuilder
 	static string[] _compareFun = { "DataItemBase.CompareInt", "DataItemBase.CompareLong", "DataItemBase.CompareSingle" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
-		string fun = @"public static partial class {0}
+		string fun = @"#if UNITY_EDITOR
+[UnityEditor.InitializeOnLoad]
+#endif
+public static partial class {0}
 {5}
 	static List<{1}> _list = null;
 	static List<{1}>[] _mainKey = null;
@@ -339,6 +342,61 @@ public class FlatBuffersLoaderBuilder
 		//5:{
 		//6:}
 		file.AppendFormat(fun, paserName, parserItemName, _excel.FileName, structListName, _excel.FieldCount, "{", "}");
+
+		//添加编辑器检查函数
+		fun = @"#if UNITY_EDITOR
+	static {0}()
+	{1}
+		DataItemPaser.PushDataItemParser(CreateDataItemPaser);
+	{2}
+
+	static DataItemPaser CreateDataItemPaser()
+	{1}
+		LoadDatas();
+		return new DataItemPaser(";
+		file.AppendFormat(fun, paserName, "{", "}");
+		file.AppendFormat("\"{0}\", new string[]", _excel.FileName);
+		file.Append("{");
+		for(int i = 0; i < _excel.FieldCount; i ++)
+		{
+			file.AppendFormat("\"{0}\",", _excel.GetFieldName(i));
+		}
+		file.Remove(file.Length - 1, 1);
+		file.Append("},");
+		file.Append("new string[]{");
+		for (int i = 0; i < _excel.FieldCount; i++)
+		{
+			file.AppendFormat("\"{0}\",", _excel.GetFieldType(i));
+		}
+		file.Remove(file.Length - 1, 1);
+		file.Append("},");
+		file.Append("_list.Count,");
+
+		file.AppendFormat(@"delegate (int index)
+		{0}
+			if(index < 0 || index >= _list.Count)
+			{0}
+				return null;
+			{1}
+			string[] array = new string[{2}];
+		", "{", "}", _excel.FieldCount);
+		for(int i = 0; i < _excel.FieldCount; i ++)
+		{
+			if(_excel.GetFieldType(i) == ExceFieldType.TEXT)
+			{
+				file.AppendFormat("			array[{0}] = _list[index].{1};\n", i, buildName(_excel.GetFieldName(i)));
+			}
+			else
+			{
+				file.AppendFormat("			array[{0}] = _list[index].{1}.ToString();\n", i, buildName(_excel.GetFieldName(i)));
+			}
+		}
+		file.Append(@"			return array;
+		});
+	}
+	
+#endif
+");
 
 		//添加BuildMainKeyXX函数
 		//0:fieldname;

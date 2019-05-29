@@ -151,10 +151,37 @@ namespace TableCreator
 					throw new System.Exception("没有找到任何字典数据，必须配置字典文件");
 				}
 
+				int select = 1;
+				if(dict_parser.FieldCount < 2)
+				{
+					Console.WriteLine("语言文件不合法，不包含任何语言信息");
+					return;
+				}
+				else if (dict_parser.FieldCount > 2)
+				{
+					int maxl = dict_parser.FieldCount - 2;
+					Console.WriteLine("按序号选择匹配的语言:");
+
+					string msg = "";
+					for(int i = 1; i < dict_parser.FieldCount; i++)
+					{
+						msg += string.Format("{0}.{1}\n", i, dict_parser.GetFieldName(i));
+					}
+
+					select = 0;
+					while (select < 1 || select > maxl)
+					{
+						Console.Write(msg);
+						string input = Console.ReadLine();
+						int.TryParse(input, out select);
+					}
+				}
+				Console.WriteLine(string.Format("\n-------------------读取语言 {0} 并解析数据库文件-------------------", dict_parser.GetFieldName(select)));
+
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
 					string k = dict_parser.GetString(i, 0);
-					string v = dict_parser.GetString(i, 1);
+					string v = dict_parser.GetString(i, select);
 					user_dict[k] = v;
 				}
 
