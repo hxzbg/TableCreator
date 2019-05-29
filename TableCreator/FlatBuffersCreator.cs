@@ -58,8 +58,13 @@ class FlatBuffersCreator
 					unit._out_pars = new string[collection.Count];
 					for (int i = 0; i < collection.Count; i++)
 					{
+						char cKey = (char)(i + 'A');
+						if(cKey > 'Z')
+						{
+							cKey = (char)('a' + (cKey - 'Z'));
+						}
 						unit._out_pars[i] = collection[i].Value;
-						keyWord += input.Substring(i == 0 ? 0 : collection[i - 1].Index + collection[i - 1].Length, (i == 0 ? collection[0].Index : collection[i].Index - collection[i - 1].Index - collection[i - 1].Length)) + "{" + (char)(i + 'A') + "}";
+						keyWord += input.Substring(i == 0 ? 0 : collection[i - 1].Index + collection[i - 1].Length, (i == 0 ? collection[0].Index : collection[i].Index - collection[i - 1].Index - collection[i - 1].Length)) + "{" + cKey + "}";
 					}
 					Match lastMatch = collection[collection.Count - 1];
 					int lastEnd = lastMatch.Index + lastMatch.Length;

@@ -180,7 +180,16 @@ public class DataItemBase
 								{
 									if(index >= 2 && *(ptr + index - 2) == '{')
 									{
-										int offset = *(ptr + index - 1) - 'A';
+										int offset = 0;
+										c = *(ptr + index - 1);
+										if(c <= 'Z')
+										{
+											offset = c - 'A';
+										}
+										else if(c <= 'z')
+										{
+											offset = c - 'a' + 26;
+										}
 										if(offset >= 0 && offset < args.Length)
 										{
 											rebuild = true;
