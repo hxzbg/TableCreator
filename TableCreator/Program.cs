@@ -3,6 +3,7 @@ using System.IO;
 using System.Xml;
 using System.Text;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace TableCreator
 {
@@ -178,10 +179,24 @@ namespace TableCreator
 				}
 				Console.WriteLine(string.Format("\n-------------------读取语言 {0} 并解析数据库文件-------------------", dict_parser.GetFieldName(select)));
 
+				MatchEvaluator evaluator = delegate (Match match)
+				{
+					return match.Value.ToUpper();
+				};
+
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
 					string k = dict_parser.GetString(i, 0);
+					if(string.IsNullOrEmpty(k) || k.StartsWith("__") == false)
+					{
+						continue;
+					}
 					string v = dict_parser.GetString(i, select);
+					v = Regex.Replace(v, "\\[[0-9a-fA-F]{6}\\]", evaluator);
+					if(user_dict.ContainsKey(k))
+					{
+						Console.WriteLine(string.Format("忽略 {0}:{1}", k, user_dict[k]));
+					}
 					user_dict[k] = v;
 				}
 
@@ -195,13 +210,29 @@ namespace TableCreator
 					if (string.IsNullOrEmpty(bin_out) == false)
 					{
 						FlatBuffersCreator creator = new FlatBuffersCreator(parser, user_dict);
-						Console.WriteLine(string.Format("write bin to {0}", creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out)));
+						string binpath = creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out);
+						if(string.IsNullOrEmpty(binpath))
+						{
+							Console.WriteLine("生成二进制文件失败。");
+						}
+						else
+						{
+							Console.WriteLine(string.Format("write bin to {0}", binpath));
+						}						
 					}
 
 					if (string.IsNullOrEmpty(sharp_out) == false)
 					{
 						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser);
-						Console.WriteLine(string.Format("write code to {0}", builder.Build(sharp_out)));
+						string sharppath = builder.Build(sharp_out);
+						if(string.IsNullOrEmpty(sharppath))
+						{
+							Console.WriteLine("生成代码失败。");
+						}
+						else
+						{
+							Console.WriteLine(string.Format("write code to {0}", sharppath));
+						}
 					}
 
 					if (string.IsNullOrEmpty(mysql_out) == false)
@@ -216,7 +247,7 @@ namespace TableCreator
 					Console.WriteLine();
 				}
 
-				UserDictionarySaver.Merge(dict_path, user_dict);
+				UserDictionarySaver.Merge(dict_path, user_dict, select);
 
 				dict_parser.Dispose();
 				dict_parser = new ExcelParser(dict_path, null);
@@ -225,13 +256,6 @@ namespace TableCreator
 				{
 					MySqlBuilder.AppendDict(dict_parser, mysql);
 					MySqlBuilder.Save(mysql_out, mysql);
-				}
-
-				for (int i = 0; i < dict_parser.RowCount; i++)
-				{
-					string k = dict_parser.GetString(i, 0);
-					string v = dict_parser.GetString(i, 1);
-					user_dict[k] = v;
 				}
 
 				string[] knownLanguages = new string[dict_parser.FieldCount - 1];

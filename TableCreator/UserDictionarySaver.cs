@@ -12,7 +12,7 @@ public class UserDictionarySaver
 		return obj != null ? obj.ToString() : "";
 	}
 
-	public static void Merge(string path, Dictionary<string, string> dict)
+	public static void Merge(string path, Dictionary<string, string> dict, int select)
 	{
 		if(dict == null)
 		{
@@ -48,7 +48,7 @@ public class UserDictionarySaver
 					string r = null;
 					string k = GetValue(cells, i, 1);
 					string v = GetValue(cells, i, 2);
-					if (dict.TryGetValue(k, out r) && r == v)
+					if (dict.TryGetValue(k, out r))
 					{
 						dict.Remove(k);
 					}
@@ -66,7 +66,7 @@ public class UserDictionarySaver
 			{
 				KeyValuePair<string, string> pair = em.Current;
 				cells[rows, 1].Value = pair.Key;
-				cells[rows, 2].Value = pair.Value;
+				cells[rows, select + 1].Value = pair.Value;
 				rows++;
 			}
 
