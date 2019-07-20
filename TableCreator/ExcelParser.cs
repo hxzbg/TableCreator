@@ -386,7 +386,7 @@ public class ExcelParser
 		string str = GetString(row, field);
 		if(string.IsNullOrEmpty(str) == false && long.TryParse(str, out var) == false)
 		{
-			Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为整数失败", row, field, str));
+			Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为整数失败", row + 1, GetFieldName(field), str));
 		}
 		return var;
 	}
@@ -397,7 +397,7 @@ public class ExcelParser
 		string str = GetString(row, field);
 		if (string.IsNullOrEmpty(str) == false && float.TryParse(str, out var) == false)
 		{
-			Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为浮点数失败", row, field, str));
+			Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为浮点数失败", row + 1, GetFieldName(field), str));
 		}
 		return var;
 	}
