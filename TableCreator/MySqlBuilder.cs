@@ -39,7 +39,7 @@ public class MySqlBuilder
 						{
 							if(string.IsNullOrEmpty(str))
 							{
-								builder.Append("null");
+								builder.Append("\'\'");
 							}
 							else
 							{
@@ -53,7 +53,7 @@ public class MySqlBuilder
 							FlatBuffersCreator.StringUnit unit = FlatBuffersCreator.SplitString(str, _excel.FileName, _dict);
 							if (string.IsNullOrEmpty(unit._outkey))
 							{
-								builder.Append("null");
+								builder.Append("\'\'");
 							}
 							else
 							{
