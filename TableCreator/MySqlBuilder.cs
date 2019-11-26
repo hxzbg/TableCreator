@@ -24,8 +24,15 @@ public class MySqlBuilder
 
 	public void Append(StringBuilder builder)
 	{
-		//清理数据
-		builder.AppendFormat("-- {0}\nTRUNCATE {0};\n", _excel.FileName);
+        //清理数据
+        builder.Append("-- ");
+        for(int i = 0; i < _excel.FieldCount; i ++)
+        {
+            builder.AppendFormat("{0} ", _excel.GetFieldName(i));
+        }
+        builder.AppendLine();
+
+        builder.AppendFormat("-- {0}\nTRUNCATE {0};\n", _excel.FileName);
 		for(int i = 0; i < _excel.RowCount; i ++)
 		{
 			builder.AppendFormat("INSERT INTO `{0}` VALUES(", _excel.FileName);
@@ -39,7 +46,7 @@ public class MySqlBuilder
 						{
 							if(string.IsNullOrEmpty(str))
 							{
-								builder.Append("\'\'");
+								builder.Append("0");
 							}
 							else
 							{

@@ -255,6 +255,12 @@ namespace TableCreator
 				if (mysql.Length > 0)
 				{
 					MySqlBuilder.AppendDict(dict_parser, mysql);
+					FormatOperatorChecker checker = new FormatOperatorChecker(dict_parser);
+					string logfile = mysql_out + ".log";
+					if (checker.Run(logfile) == false)
+					{
+						Console.WriteLine("多国语文件存在错误，详情请查看{0}。", logfile);
+					}
 					MySqlBuilder.Save(mysql_out, mysql);
 				}
 
