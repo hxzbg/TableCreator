@@ -179,6 +179,13 @@ namespace TableCreator
 				}
 				Console.WriteLine(string.Format("\n-------------------读取语言 {0} 并解析数据库文件-------------------", dict_parser.GetFieldName(select)));
 
+				FormatOperatorChecker checker = new FormatOperatorChecker(dict_parser);
+				string logfile = dict_path + ".log";
+				if (checker.Run(logfile) == false)
+				{
+					Console.WriteLine("多国语文件存在错误，详情请查看{0}。", logfile);
+				}
+
 				MatchEvaluator evaluator = delegate (Match match)
 				{
 					return match.Value.ToUpper();
@@ -255,12 +262,6 @@ namespace TableCreator
 				if (mysql.Length > 0)
 				{
 					MySqlBuilder.AppendDict(dict_parser, mysql);
-					FormatOperatorChecker checker = new FormatOperatorChecker(dict_parser);
-					string logfile = mysql_out + ".log";
-					if (checker.Run(logfile) == false)
-					{
-						Console.WriteLine("多国语文件存在错误，详情请查看{0}。", logfile);
-					}
 					MySqlBuilder.Save(mysql_out, mysql);
 				}
 

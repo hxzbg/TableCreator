@@ -14,7 +14,7 @@ public class FormatOperatorChecker
 		_offset = offset;
 	}
 
-	static System.Func<string, int, int> OneCharChecker = delegate (string line, int pos)   //%d,%s,%f,%c ......
+	static System.Func<string, int, int> OneCharChecker = delegate (string line, int pos)
 	{
 		if (line.Length <= pos)
 		{
@@ -78,9 +78,14 @@ public class FormatOperatorChecker
 					int result = _FormatCheckers[i](line, index);
 					if(result > 0)
 					{
-						formaters.Add(line.Substring(index, result));
+						formaters.Add(line.Substring(index - 1, result + 1));
 					}
 				}
+			}
+			else if(line[index] == '{' && (index + 2) < line.Length && line[index + 2] == '}')
+			{
+				formaters.Add(line.Substring(index, 3));
+				index += 3;
 			}
 		}
 	}
@@ -92,13 +97,15 @@ public class FormatOperatorChecker
 		stringBuilder.AppendFormat("\t\t{0}:", _parser.GetFieldName(field));
 		stringBuilder.AppendLine(_parser.GetString(row, field));
 		stringBuilder.Append("\t\tFormat:");
-		for (int index = 0; index < list.Count; index ++)
+		if(list.Count > 0)
 		{
-			stringBuilder.Append("%");
-			stringBuilder.Append(list[index]);
-			stringBuilder.Append(",");
+			for (int index = 0; index < list.Count; index++)
+			{
+				stringBuilder.Append(list[index]);
+				stringBuilder.Append(",");
+			}
+			stringBuilder.Remove(stringBuilder.Length - 1, 1);
 		}
-		stringBuilder.Remove(stringBuilder.Length - 1, 1);
 		stringBuilder.AppendLine();
 	}
 
