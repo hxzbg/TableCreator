@@ -122,10 +122,6 @@ public class FormatOperatorChecker
 			}
 
 			ExtraFormaters(line, _formats[index]);
-			if(_formats[index].Count > 0)
-			{
-				_formats[index].Sort();
-			}
 		}
 
 		List<string> src = _formats[_offset];
