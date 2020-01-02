@@ -6,9 +6,11 @@ using System.Collections.Generic;
 public class FlatBuffersLoaderBuilder
 {
 	ExcelParser _excel = null;
-	public FlatBuffersLoaderBuilder(ExcelParser parser)
+	string _namespace = null;
+	public FlatBuffersLoaderBuilder(ExcelParser parser, string name_space = null)
 	{
 		_excel = parser;
+		_namespace = name_space;
 	}
 
 	string buildName(string input, string addtion = null)
@@ -119,6 +121,10 @@ public class FlatBuffersLoaderBuilder
 	public void Dispose()
 	{1}
 ";
+		if(string.IsNullOrEmpty(_namespace) == false)
+		{
+			file.AppendFormat("namespace {0}\n{1}\n", _namespace, "{");
+		}
 		file.AppendFormat(fun, parserItemName, "{", "}");
 
 		//实现Dispose函数
@@ -234,7 +240,7 @@ public class FlatBuffersLoaderBuilder
 			}
 		}
 		file.AppendLine("\t\tOnPostParse();\n\t}");
-		file.AppendLine("}\n");
+		file.AppendLine("\n}\n");
 	}
 
 	static string[] _fieldType = { "int", "long", "float"};
@@ -435,6 +441,11 @@ public static partial class {0}
 		}
 
 		file.AppendLine("}");
+
+		if (string.IsNullOrEmpty(_namespace) == false)
+		{
+			file.AppendLine("}");
+		}
 	}
 
 	public string Build(string output)

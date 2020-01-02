@@ -17,6 +17,7 @@ namespace TableCreator
 				string mysql_out = "";
 				string sharp_out = "";
 				string dict_path = "";
+				string name_space = "";
 				List<string> list = new List<string>();
 				for (int index = 0; index < args.Length; index++)
 				{
@@ -39,6 +40,10 @@ namespace TableCreator
 
 							case "-m":
 								mysql_out = args[++index];
+								break;
+
+							case "-n":
+								name_space = args[++index];
 								break;
 						}
 					}
@@ -91,6 +96,11 @@ namespace TableCreator
 							if (config_node.HasAttribute("dictionary"))
 							{
 								dict_path = config_node.GetAttribute("dictionary");
+							}
+
+							if (config_node.HasAttribute("namespace"))
+							{
+								name_space = config_node.GetAttribute("namespace");
 							}
 						}
 					}
@@ -230,7 +240,7 @@ namespace TableCreator
 
 					if (string.IsNullOrEmpty(sharp_out) == false)
 					{
-						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser);
+						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser, name_space);
 						string sharppath = builder.Build(sharp_out);
 						if(string.IsNullOrEmpty(sharppath))
 						{
