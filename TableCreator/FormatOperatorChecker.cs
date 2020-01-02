@@ -170,16 +170,11 @@ public class FormatOperatorChecker
 		return true;
 	}
 
-	public bool Run(string report)
+	public string Run()
 	{
-		if(File.Exists(report))
-		{
-			File.Delete(report);
-		}
-
 		if(_parser == null || _parser.FieldCount <= 0)
 		{
-			return true;
+			return "";
 		}
 
 		_formats = new List<string>[_parser.FieldCount];
@@ -194,10 +189,6 @@ public class FormatOperatorChecker
 		{
 			hasError |= CheckRow(index, stringBuilder);
 		}
-		if(hasError)
-		{
-			File.WriteAllText(report, stringBuilder.ToString());
-		}
-		return hasError;
+		return hasError ? stringBuilder.ToString() : "";
 	}
 }

@@ -191,8 +191,15 @@ namespace TableCreator
 
 				FormatOperatorChecker checker = new FormatOperatorChecker(dict_parser);
 				string logfile = dict_path + ".log";
-				if (checker.Run(logfile) == false)
+				if (File.Exists(logfile))
 				{
+					File.Delete(logfile);
+				}
+
+				string errors = checker.Run();
+				if (string.IsNullOrEmpty(errors))
+				{
+					File.WriteAllText(logfile, errors);
 					Console.WriteLine("多国语文件存在错误，详情请查看{0}。", logfile);
 				}
 
@@ -284,7 +291,7 @@ namespace TableCreator
 				Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
 				for (int i = 0; i < dict_parser.RowCount; i++)
 				{
-					string key = dict_parser.GetString(i, 0);
+					string key = dict_parser.GetString(i, 0).Trim();
 					if (string.IsNullOrEmpty(key) || key.StartsWith("//"))
 					{
 						continue;
