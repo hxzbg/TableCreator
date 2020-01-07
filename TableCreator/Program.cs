@@ -197,7 +197,7 @@ namespace TableCreator
 				}
 
 				string errors = checker.Run();
-				if (string.IsNullOrEmpty(errors))
+				if (string.IsNullOrEmpty(errors) == false)
 				{
 					File.WriteAllText(logfile, errors);
 					Console.WriteLine("多国语文件存在错误，详情请查看{0}。", logfile);
