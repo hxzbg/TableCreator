@@ -46,7 +46,7 @@ public class MySqlBuilder
 						{
 							if(string.IsNullOrEmpty(str))
 							{
-								builder.Append("0");
+								builder.Append("null");
 							}
 							else
 							{
