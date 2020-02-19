@@ -65,6 +65,33 @@ public class FormatOperatorChecker
 
 	static System.Func<string, int, int>[] _FormatCheckers = { ThreeCharChecker, TwoCharChecker, OneCharChecker };
 
+	public static void ParseFormaters(string line, System.Action<int, int> parser)
+	{
+		if(string.IsNullOrEmpty(line) == false && parser != null)
+		{
+			for (int index = 0; index < line.Length; index++)
+			{
+				if (line[index] == '%')
+				{
+					index++;
+					for (int i = 0; i < _FormatCheckers.Length; i++)
+					{
+						int result = _FormatCheckers[i](line, index);
+						if (result > 0)
+						{
+							parser(index - 1, result);
+						}
+					}
+				}
+				else if (line[index] == '{' && (index + 2) < line.Length && line[index + 2] == '}')
+				{
+					parser(index, 1);
+					index += 3;
+				}
+			}
+		}
+	}
+
 	void ExtraFormaters(string line, List<string> formaters)
 	{
 		formaters.Clear();
