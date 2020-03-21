@@ -13,6 +13,7 @@ namespace TableCreator
 		{
 			try
 			{
+				bool rebuiild = false;
 				string bin_out = "";
 				string mysql_out = "";
 				string sharp_out = "";
@@ -22,6 +23,7 @@ namespace TableCreator
 				for (int index = 0; index < args.Length; index++)
 				{
 					string arg = args[index];
+					Console.WriteLine(arg);
 					if (arg.StartsWith("-"))
 					{
 						switch (arg)
@@ -44,6 +46,12 @@ namespace TableCreator
 
 							case "-n":
 								name_space = args[++index];
+								break;
+
+							case "-rebuild":
+								{
+									rebuiild = true;
+								}
 								break;
 						}
 					}
@@ -134,6 +142,27 @@ namespace TableCreator
 
 				string fbspath = Path.Combine(exeRoot, "FBS.txt");
 				Dictionary<string, ExcelHeaderItem[]> excelheaders = ExcelParser.ParseExcelHeaderFromFbs(fbspath);
+
+				if(rebuiild)
+				{
+					Dictionary<string, ExcelHeaderItem[]>.Enumerator em = excelheaders.GetEnumerator();
+					while(em.MoveNext())
+					{
+						KeyValuePair<string, ExcelHeaderItem[]> pair = em.Current;
+						ExcelHeaderItem[] headers = pair.Value;
+						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(pair.Key, pair.Value, name_space);
+						string sharppath = builder.Build(sharp_out);
+						if (string.IsNullOrEmpty(sharppath))
+						{
+							Console.WriteLine("生成代码失败。");
+						}
+						else
+						{
+							Console.WriteLine(string.Format("write code to {0}", sharppath));
+						}
+					}
+					return;
+				}
 
 				ExcelParser dict_parser = null;
 				Dictionary<string, string> user_dict = new Dictionary<string, string>();
@@ -247,7 +276,10 @@ namespace TableCreator
 
 					if (string.IsNullOrEmpty(sharp_out) == false)
 					{
-						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(parser, name_space);
+						ExcelHeaderItem[] headers = null;
+						string loaderName = parser.FileName;
+						excelheaders.TryGetValue(loaderName, out headers);
+						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(loaderName, headers, name_space);
 						string sharppath = builder.Build(sharp_out);
 						if(string.IsNullOrEmpty(sharppath))
 						{

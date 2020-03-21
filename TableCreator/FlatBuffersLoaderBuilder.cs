@@ -5,12 +5,14 @@ using System.Collections.Generic;
 
 public class FlatBuffersLoaderBuilder
 {
-	ExcelParser _excel = null;
 	string _namespace = null;
-	public FlatBuffersLoaderBuilder(ExcelParser parser, string name_space = null)
+	string _loaderName = null;
+	ExcelHeaderItem[] _headers = null;
+	public FlatBuffersLoaderBuilder(string loaderName, ExcelHeaderItem[] headrs, string name_space = null)
 	{
-		_excel = parser;
+		_headers = headrs;
 		_namespace = name_space;
+		_loaderName = loaderName;
 	}
 
 	string buildName(string input, string addtion = null)
@@ -58,10 +60,11 @@ public class FlatBuffersLoaderBuilder
 		file.AppendFormat(fun, itemName, "{", "}");
 
 		//Item属性
-		for (int index = 0; index < _excel.FieldCount; index++)
+		for (int index = 0; index < _headers.Length; index++)
 		{
-			string fieldName = buildName(_excel.GetFieldName(index));
-			ExceFieldType excelType = _excel.GetFieldType(index);
+			ExcelHeaderItem header = _headers[index];
+			string fieldName = buildName(header.fieldname);
+			ExceFieldType excelType = header.fieldtype;
 			switch (excelType)
 			{
 				case ExceFieldType.INTEGER:
@@ -128,11 +131,12 @@ public class FlatBuffersLoaderBuilder
 		file.AppendFormat(fun, parserItemName, "{", "}");
 
 		//实现Dispose函数
-		for(int i = 0; i < _excel.FieldCount; i ++)
+		for(int i = 0; i < _headers.Length; i ++)
 		{
-			if(_excel.GetFieldType(i) == ExceFieldType.TEXT)
+			ExcelHeaderItem header = _headers[i];
+			if (header.fieldtype == ExceFieldType.TEXT)
 			{
-				file.AppendFormat("\t\t_{0} = null;\n", buildName(_excel.GetFieldName(i)));
+				file.AppendFormat("\t\t_{0} = null;\n", buildName(header.fieldname));
 			}
 		}
 		file.AppendLine("\t}\n");
@@ -150,12 +154,13 @@ public class FlatBuffersLoaderBuilder
 	public {0} {1} {4} get {4} if(_{1} == null) DataItemBase.__BuildString(ref _{1}, __p, {6}); return _{1}; {5} {5}
 
 ";
-		for (int index = 0; index < _excel.FieldCount; index++)
+		for (int index = 0; index < _headers.Length; index++)
 		{
 			string typeName = "int";
 			string defValue = "0";
 			string format = fun;
-			switch (_excel.GetFieldType(index))
+			ExcelHeaderItem header = _headers[index];
+			switch (header.fieldtype)
 			{
 				case ExceFieldType.LONG:
 					{
@@ -186,7 +191,7 @@ public class FlatBuffersLoaderBuilder
 			//3:defValue;
 			//4:{
 			//5:}
-			file.AppendFormat(format, typeName, buildName(_excel.GetFieldName(index)), parserItemName, defValue, "{", "}", 4 + index * 2);
+			file.AppendFormat(format, typeName, buildName(header.fieldname), parserItemName, defValue, "{", "}", 4 + index * 2);
 		}
 
 		//Comparison数组，排序时用到
@@ -194,10 +199,11 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("\t{");
 		fun = @"		delegate({0} a, {0} b) {3} return {1}(a._{2}, b._{2}); {4},
 ";
-		for (int index = 0; index < _excel.FieldCount; index++)
+		for (int index = 0; index < _headers.Length; index++)
 		{
+			ExcelHeaderItem header = _headers[index];
 			string typeName = "DataItemBase.CompareInt";
-			switch (_excel.GetFieldType(index))
+			switch (header.fieldtype)
 			{
 				case ExceFieldType.LONG:
 					{
@@ -223,18 +229,19 @@ public class FlatBuffersLoaderBuilder
 			//2:fieldname
 			//3:{
 			//4:}
-			file.AppendFormat(fun, parserItemName, typeName, buildName(_excel.GetFieldName(index)), "{", "}");
+			file.AppendFormat(fun, parserItemName, typeName, buildName(header.fieldname), "{", "}");
 		}
 		file.AppendLine("\t};\n");
 
 		//Parse函数
 		file.AppendFormat("\tinternal void Parse(FlatBuffersData.{0} item)\n", structItemName);
 		file.AppendLine("\t{\n\t\t__p=item.table;");
-		for (int index = 0; index < _excel.FieldCount; index++)
+		for (int index = 0; index < _headers.Length; index++)
 		{
-			string fieldName = buildName(_excel.GetFieldName(index));
-			ExceFieldType excelType = _excel.GetFieldType(index);
-			if(excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.LONG || excelType == ExceFieldType.REAL)
+			ExcelHeaderItem header = _headers[index];
+			string fieldName = buildName(header.fieldname);
+			ExceFieldType excelType = header.fieldtype;
+			if (excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.LONG || excelType == ExceFieldType.REAL)
 			{
 				file.AppendFormat("\t\t_{0} = item.{0};\n", fieldName);
 			}
@@ -347,7 +354,7 @@ public static partial class {0}
 		//4:fieldCount
 		//5:{
 		//6:}
-		file.AppendFormat(fun, paserName, parserItemName, _excel.FileName, structListName, _excel.FieldCount, "{", "}");
+		file.AppendFormat(fun, paserName, parserItemName, _loaderName, structListName, _headers.Length, "{", "}");
 
 		//添加编辑器检查函数
 		fun = @"#if UNITY_EDITOR
@@ -361,18 +368,18 @@ public static partial class {0}
 		LoadDatas();
 		return new DataItemPaser(";
 		file.AppendFormat(fun, paserName, "{", "}");
-		file.AppendFormat("\"{0}\", new string[]", _excel.FileName);
+		file.AppendFormat("\"{0}\", new string[]", _loaderName);
 		file.Append("{");
-		for(int i = 0; i < _excel.FieldCount; i ++)
+		for(int i = 0; i < _headers.Length; i ++)
 		{
-			file.AppendFormat("\"{0}\",", _excel.GetFieldName(i));
+			file.AppendFormat("\"{0}\",", _headers[i].fieldname);
 		}
 		file.Remove(file.Length - 1, 1);
 		file.Append("},");
 		file.Append("new string[]{");
-		for (int i = 0; i < _excel.FieldCount; i++)
+		for (int i = 0; i < _headers.Length; i++)
 		{
-			file.AppendFormat("\"{0}\",", _excel.GetFieldType(i));
+			file.AppendFormat("\"{0}\",", _headers[i].fieldtype);
 		}
 		file.Remove(file.Length - 1, 1);
 		file.Append("},");
@@ -385,16 +392,17 @@ public static partial class {0}
 				return null;
 			{1}
 			string[] array = new string[{2}];
-		", "{", "}", _excel.FieldCount);
-		for(int i = 0; i < _excel.FieldCount; i ++)
+		", "{", "}", _headers.Length);
+		for(int i = 0; i < _headers.Length; i ++)
 		{
-			if(_excel.GetFieldType(i) == ExceFieldType.TEXT)
+			ExcelHeaderItem header = _headers[i];
+			if (header.fieldtype == ExceFieldType.TEXT)
 			{
-				file.AppendFormat("			array[{0}] = _list[index].{1};\n", i, buildName(_excel.GetFieldName(i)));
+				file.AppendFormat("			array[{0}] = _list[index].{1};\n", i, buildName(header.fieldname));
 			}
 			else
 			{
-				file.AppendFormat("			array[{0}] = _list[index].{1}.ToString();\n", i, buildName(_excel.GetFieldName(i)));
+				file.AppendFormat("			array[{0}] = _list[index].{1}.ToString();\n", i, buildName(header.fieldname));
 			}
 		}
 		file.Append(@"			return array;
@@ -420,9 +428,10 @@ public static partial class {0}
 	{3}
 
 ";
-		for (int index = 0; index < _excel.FieldCount; index++)
+		for (int index = 0; index < _headers.Length; index++)
 		{
-			ExceFieldType excelType = _excel.GetFieldType(index);
+			ExcelHeaderItem header = _headers[index];
+			ExceFieldType excelType = header.fieldtype;
 			switch (excelType)
 			{
 				case ExceFieldType.INTEGER:
@@ -431,7 +440,7 @@ public static partial class {0}
 					{
 						string fieldType = _fieldType[(int)excelType - 1];
 						string compareFun = _compareFun[(int)excelType - 1];
-						file.AppendFormat(fun, buildName(_excel.GetFieldName(index)), index, "{", "}", parserItemName, fieldType, compareFun);
+						file.AppendFormat(fun, buildName(header.fieldname), index, "{", "}", parserItemName, fieldType, compareFun);
 					}
 					break;
 
@@ -450,16 +459,16 @@ public static partial class {0}
 
 	public string Build(string output)
 	{
-		if(_excel == null || _excel.RowCount <= 0)
+		if(_headers == null || _headers.Length <= 0)
 		{
 			return null;
 		}
 
 		StringBuilder file = new StringBuilder();
-		string structItemName = buildName(_excel.FileName, "StructItem");
-		string structListName = buildName(_excel.FileName, "StructList");
-		string parserItemName = buildName(_excel.FileName, "Item");
-		string paserName = buildName(_excel.FileName);
+		string structItemName = buildName(_loaderName, "StructItem");
+		string structListName = buildName(_loaderName, "StructList");
+		string parserItemName = buildName(_loaderName, "Item");
+		string paserName = buildName(_loaderName);
 
 		//CS文件标题
 		file.Append(@"// <auto-generated>
@@ -483,7 +492,7 @@ namespace FlatBuffersData
 		{
 			Directory.CreateDirectory(output);
 		}
-		output = Path.Combine(output, buildName(_excel.FileName) + ".cs");
+		output = Path.Combine(output, buildName(_loaderName) + ".cs");
 		File.WriteAllText(output, file.ToString());
 		return output;
 	}
