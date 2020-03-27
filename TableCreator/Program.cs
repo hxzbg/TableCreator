@@ -302,6 +302,7 @@ namespace TableCreator
 
 					Console.WriteLine();
 				}
+				ExcelParser.SaveExcelHeaderToFbs(fbspath, excelheaders);
 
 				UserDictionarySaver.Merge(dict_path, user_dict, select);
 
@@ -342,8 +343,6 @@ namespace TableCreator
 					LocalizationSaver.Save(bin_out, knownLanguages, dictionary);
 				}
 				dict_parser.Dispose();
-
-				ExcelParser.SaveExcelHeaderToFbs(fbspath, excelheaders);
 			}
 			catch(System.Exception e)
 			{

@@ -127,7 +127,9 @@ public class DataStoreSet
 			m_fieldAttributes = value;
         }
     }
-	static System.Func<string, ByteBuffer> ByteBufferLoader = null;
+
+	static System.Action m_disposeAll = null;
+	public static System.Func<string, ByteBuffer> ByteBufferLoader = null;
 
 	protected bool __Init()
 	{
@@ -160,6 +162,7 @@ public class DataStoreSet
 			item.Parse(index, m_structItem);
 			m_list.Add(item);
 		}
+		m_disposeAll += __Disposed;
 		return true;
 		//DataStoreItem.OnPostLoaded(SqliteStat1.Dispose);
 	}
@@ -190,6 +193,12 @@ public class DataStoreSet
     {
 		__Init();
 		return m_list != null ? m_list.Count : 0;
+    }
+
+    protected DataStoreItem __GetItem(int index)
+    {
+		__Init();
+		return index >= 0 && index < m_list.Count ? m_list[index] : null;
     }
 
 	protected DataStoreItem __FindMax(int field, System.Func<DataStoreItem, bool> checker = null)
@@ -230,7 +239,7 @@ public class DataStoreSet
 		return QueryDataStore<TV>.Create(m_mainKeys[field], value, comparison, get_value, filter);
 	}
 
-	protected void Disposed()
+	protected void __Disposed()
     {
 		if (m_buffer != null)
 		{
@@ -262,11 +271,18 @@ public class DataStoreSet
 			m_mainKeys = null;
 		}
 	}
+
+    public static void DisposeAll()
+    {
+        if(m_disposeAll != null)
+        {
+			m_disposeAll();
+        }
+    }
 }
 
 public class DataStoreHelper
 {
-	public static System.Action<IntPtr> __FreePointer = null;
 	public static System.Func<string, string> __FindStringByKey = null;
 
 	public static List<DataStoreItem> ParseDatas(ByteBuffer buffer, System.Func<DataStoreItem> creator, System.Action<DataStoreItem> poster, System.Func<ByteBuffer, List<DataStoreItem>> parser)
@@ -287,11 +303,6 @@ public class DataStoreHelper
 		}
 
 		return list;
-	}
-
-	public static void Free(IntPtr pointer)
-	{
-		__FreePointer(pointer);
 	}
 
 	readonly public static System.Func<int, int, int> __CompareInt = delegate (int a, int b)

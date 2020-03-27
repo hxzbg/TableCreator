@@ -70,7 +70,7 @@ public class FlatBuffersLoaderBuilder
 
 ";
 		string fun_string = @"	{0} _{1} = null;
-	public {0} {1} {4} get {4} if(_{1} == null) {7}.__BuildString(ref _{1}, this, {6}); return _{1}; {5} {5}
+	public {0} {1} {4} get {4} if(_{1} == null) {7}.BuildString(ref _{1}, this, {6}); return _{1}; {5} {5}
 
 ";
 		for (int index = 0; index < _headers.Length; index++)
@@ -170,6 +170,11 @@ public partial class {0} : DataStoreSet
 #endif
     {6}
 
+    public static void LoadDatas()
+    {5}
+        __Instance.__Init();
+    {6}
+
 ";
         file.AppendFormat(fun, paserName, parserItemName, _loaderName, structListName, _headers.Length, "{", "}");
 
@@ -252,14 +257,14 @@ public partial class {0} : DataStoreSet
         return null;
     {6}
 
-    public static void ____BuildString(ref string str, {1} item, int offset)
+    public static void BuildString(ref string str, {1} item, int offset)
     {5}
         __Instance.__BuildString(ref str, item, offset);
     {6}
 
 	public static Query<{1}> Query(System.Func<{1}, bool> filter = null)
 	{5}
-		return Query<{1}>.Create(filter != null ? delegate({1} item){5} return filter(item as DataStoreItem);{6});
+		return Query<{1}>.Create(__Instance.__Search(ConvertFilter(filter)));
 	{6}
 
 ";
@@ -294,26 +299,27 @@ public partial class {0} : DataStoreSet
 		}
 		file.Remove(file.Length - 1, 1);
 		file.Append("},");
-		file.Append("_list.Count,");
+		file.Append("__Instance.__GetLength(),");
 
 		file.AppendFormat(@"delegate (int index)
 		{0}
-			if(index < 0 || index >= _list.Count)
-			{0}
-				return null;
-			{1}
+            {3} item = __Instance.__GetItem(index) as {3};
+            if(item == null)
+            {0}
+                return null;
+            {1}
 			string[] array = new string[{2}];
-		", "{", "}", _headers.Length);
+		", "{", "}", _headers.Length, parserItemName);
 		for(int i = 0; i < _headers.Length; i ++)
 		{
 			ExcelHeaderItem header = _headers[i];
 			if (header.fieldtype == ExceFieldType.TEXT)
 			{
-				file.AppendFormat("			array[{0}] = _list[index].{1};\n", i, buildName(header.fieldname));
+				file.AppendFormat("			array[{0}] = item.{1};\n", i, buildName(header.fieldname));
 			}
 			else
 			{
-				file.AppendFormat("			array[{0}] = _list[index].{1}.ToString();\n", i, buildName(header.fieldname));
+				file.AppendFormat("			array[{0}] = item.{1}.ToString();\n", i, buildName(header.fieldname));
 			}
 		}
 		file.Append(@"			return array;
@@ -331,7 +337,7 @@ public partial class {0} : DataStoreSet
 		//4:parserItemName
 		//5:fieldtype
 		//6:compare fun
-		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} return __Instance.__FindMax({1}, ConvertFilter(filter)); {3}
+		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} return __Instance.__FindMax({1}, ConvertFilter(filter)) as {4}; {3}
 	public static void KeyFor{0}() {2} __Instance.__BuildKeyByField({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value, System.Func<{4}, bool> filter = null)
 	{2}

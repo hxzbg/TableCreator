@@ -1,4 +1,82 @@
 ﻿using System;
+using System.Collections.Generic;
+
+#if UNITY_EDITOR
+public class DataItemPaser
+{
+	string _name;
+	public string Name
+	{
+		get
+		{
+			return _name;
+		}
+	}
+
+	string[] _fieldNames;
+	public string[] FieldNames
+	{
+		get
+		{
+			return _fieldNames;
+		}
+	}
+
+	string[] _fieldTypes;
+	public string[] FieldTypes
+	{
+		get
+		{
+			return _fieldTypes;
+		}
+	}
+
+	int _columnsCount;
+	public int ColumnsCount
+	{
+		get
+		{
+			return _columnsCount;
+		}
+	}
+
+	public DataItemPaser(string name, string[] filedNames, string[] fieldTypes, int columnsCount, System.Func<int, string[]> fieldParser)
+	{
+		_name = name;
+		_fieldNames = filedNames;
+		_fieldTypes = fieldTypes;
+		_columnsCount = columnsCount;
+		_fieldParser = fieldParser;
+	}
+
+	System.Func<int, string[]> _fieldParser = null;
+	public System.Func<int, string[]> FieldParser
+	{
+		get
+		{
+			return _fieldParser;
+		}
+	}
+
+	static List<System.Func<DataItemPaser>> _parserList = new List<System.Func<DataItemPaser>>();
+	public static List<System.Func<DataItemPaser>> ParserList
+	{
+		get
+		{
+			return _parserList;
+		}
+	}
+
+	public static void PushDataItemParser(System.Func<DataItemPaser> parser)
+	{
+		if (parser != null && _parserList.Contains(parser) == false)
+		{
+			_parserList.Add(parser);
+		}
+	}
+}
+#endif
+
 public class Query<T> : System.IDisposable where T : DataStoreItem
 {
 	QueryDataStore _query = null;
