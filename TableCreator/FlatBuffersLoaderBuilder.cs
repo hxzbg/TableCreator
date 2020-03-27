@@ -37,91 +37,12 @@ public class FlatBuffersLoaderBuilder
 		return sb.ToString();
 	}
 
-	static string[] _typeName = { "int", "long", "float" };
-	static string[] _funName = { "bb.GetInt", "bb.GetLong", "bb.GetFloat" };
-	static string[] _defValue = { "0", "0", "0.0f" };
-	void BuildStructItem(StringBuilder file, string itemName, string listName)
-	{
-		file.AppendFormat("struct {0} : IFlatbufferObject\n", itemName);
-		file.AppendLine("{");
-
-		//变量和函数
-		//0:itemName
-		//1:listName
-		//2:{
-		//3:}
-		string fun = @"	private Table __p;
-	public Table table {1} get {1} return __p; {2} {2}
-	public ByteBuffer ByteBuffer {1} get {1} return __p.bb; {2} {2}
-	public void __init(int _i, ByteBuffer _bb) {1} __p.bb_pos = _i; __p.bb = _bb; {2}
-	public {0} __assign(int _i, ByteBuffer _bb) {1} __init(_i, _bb); return this; {2}
-
-";
-		file.AppendFormat(fun, itemName, "{", "}");
-
-		//Item属性
-		for (int index = 0; index < _headers.Length; index++)
-		{
-			ExcelHeaderItem header = _headers[index];
-			string fieldName = buildName(header.fieldname);
-			ExceFieldType excelType = header.fieldtype;
-			switch (excelType)
-			{
-				case ExceFieldType.INTEGER:
-				case ExceFieldType.LONG:
-				case ExceFieldType.REAL:
-					{
-						string typeName = _typeName[(int)excelType - 1];
-						string funName = _funName[(int)excelType - 1];
-						string defValue = _defValue[(int)excelType - 1];
-
-						//0:typeName
-						//1:funName
-						//2:defValue;
-						//3:{
-						//4:}
-						//5:id
-						//6:fieldName
-						file.AppendFormat("\tpublic {0} {6} {3} get {3} int o = __p.__offset({5}); return o != 0 ? __p.{1}(o + __p.bb_pos) : {2}; {4} {4}\n", typeName, funName, defValue, "{", "}", 4 + index * 2, fieldName);
-					}
-					break;
-			}
-		}
-
-		file.AppendLine("}\n");
-	}
-
-	void BuildStructList(StringBuilder file, string itemName, string listName)
-	{
-		//List类类名
-		file.AppendFormat("struct {0} : IFlatbufferObject\n", listName);
-		file.AppendLine("{");
-
-		//变量和函数
-		//0:itemName
-		//1:listName
-		//2:{
-		//3:}
-		string fun = @"	private Table __p;
-	public ByteBuffer ByteBuffer {1} get {1} return __p.bb; {2} {2}
-	public static {0} GetRootAs{0}(ByteBuffer _bb) {1} return GetRootAs{0}(_bb, new {0}()); {2}
-	public static {0} GetRootAs{0}(ByteBuffer _bb, {0} obj) {1} return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); {2}
-	public void __init(int _i, ByteBuffer _bb) {1} __p.bb_pos = _i; __p.bb = _bb; {2}
-	public {0} __assign(int _i, ByteBuffer _bb) {1} __init(_i, _bb); return this; {2}
-	
-	public {3}? List(int j) {1} int o = __p.__offset(4); return o != 0 ? ({3}?)(new {3}()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; {2}
-	public int ListLength {1} get {1} int o = __p.__offset(4); return o != 0 ? __p.__vector_len(o) : 0; {2} {2}
-";
-		file.AppendFormat(fun, listName, "{", "}", itemName);
-		file.AppendLine("}");
-	}
-
 	void BuildItemForParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
-		string fun = @"public partial class {0} : DataItemBase
+		string fun = @"public partial class {0} : DataStoreItem
 {1}
 	partial void OnPostParse();
-	public void Dispose()
+	public override void Dispose()
 	{1}
 ";
 		if(string.IsNullOrEmpty(_namespace) == false)
@@ -143,15 +64,13 @@ public class FlatBuffersLoaderBuilder
 
 		//成员变量和属性,以及Get回调方法
 
-		file.AppendLine("\tTable __p;\n");
-
 		fun = @"	{0} _{1} = {3};
 	public {0} {1} {4} get {4} return _{1}; {5} {5}
-	internal static System.Func<{2}, {0}> _Get{1} = delegate ({2} item) {4} return item.{1}; {5};
+	internal static System.Func<DataStoreItem, {0}> _Get{1} = delegate (DataStoreItem item) {4} return (({2})item).{1}; {5};
 
 ";
 		string fun_string = @"	{0} _{1} = null;
-	public {0} {1} {4} get {4} if(_{1} == null) DataItemBase.__BuildString(ref _{1}, __p, {6}); return _{1}; {5} {5}
+	public {0} {1} {4} get {4} if(_{1} == null) {7}.__BuildString(ref _{1}, this, {6}); return _{1}; {5} {5}
 
 ";
 		for (int index = 0; index < _headers.Length; index++)
@@ -191,35 +110,120 @@ public class FlatBuffersLoaderBuilder
 			//3:defValue;
 			//4:{
 			//5:}
-			file.AppendFormat(format, typeName, buildName(header.fieldname), parserItemName, defValue, "{", "}", 4 + index * 2);
+			file.AppendFormat(format, typeName, buildName(header.fieldname), parserItemName, defValue, "{", "}", 4 + index * 2, paserName);
 		}
 
+		//Parse函数
+		file.AppendFormat("\tpublic override void Parse(int position, FlatbufferDataStore item)\n", structItemName);
+		file.AppendLine("\t{\n");
+		for (int index = 0; index < _headers.Length; index++)
+		{
+			string fieldNethod = null;
+			ExcelHeaderItem header = _headers[index];
+			string fieldName = buildName(header.fieldname);
+			ExceFieldType excelType = header.fieldtype;
+            switch(excelType)
+            {
+				case ExceFieldType.INTEGER:
+					fieldNethod = "GetIntValue";
+					break;
+
+				case ExceFieldType.LONG:
+					fieldNethod = "GetLongValue";
+					break;
+
+				case ExceFieldType.REAL:
+					fieldNethod = "GetFloatValue";
+					break;
+
+			}
+			if (string.IsNullOrEmpty(fieldNethod) == false)
+			{
+				file.AppendFormat("\t\t_{0} = item.{1}({2});\n", fieldName, fieldNethod, index);
+			}
+		}
+		file.AppendLine("\t\tOnPostParse();\n\t}");
+		file.AppendLine("\n}\n");
+	}
+
+	static string[] _fieldType = { "int", "long", "float"};
+	static string[] _compareFun = { "DataStoreHelper.__CompareInt", "DataStoreHelper.__CompareLong", "DataStoreHelper.__CompareSingle" };
+	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
+	{
+		string fun = @"#if UNITY_EDITOR
+[UnityEditor.InitializeOnLoad]
+#endif
+public partial class {0} : DataStoreSet
+{5}
+	static {0} __Instance = null;
+    static {0}()
+    {5}
+        __Instance = new {0}();
+        __Instance.m_fieldsCount = {4};
+        __Instance.m_assetPath = ""{2}"";
+        __Instance.m_creator = delegate(){5} return new {1}();{6};
+        __Instance.__FieldNames = ____FieldNames;
+        __Instance.__Comparsions = ____Comparsions;
+        __Instance.__FieldAttributes = ____FieldAttributes;
+#if UNITY_EDITOR
+		DataItemPaser.PushDataItemParser(CreateDataItemPaser);
+#endif
+    {6}
+
+";
+        file.AppendFormat(fun, paserName, parserItemName, _loaderName, structListName, _headers.Length, "{", "}");
+
+        //fieldName
+		file.Append("\tstatic string[] ____FieldNames = {");
+        if(_headers.Length > 0)
+        {
+			for (int index = 0; index < _headers.Length; index++)
+			{
+				ExcelHeaderItem header = _headers[index];
+				file.AppendFormat("\"_{0}\",", buildName(header.fieldname));
+			}
+			file.Remove(file.Length - 1, 1);
+		}
+		file.AppendLine("};\n");
+
+		//fieldAttributes
+		file.Append("\tstatic int[] ____FieldAttributes = {");
+		if (_headers.Length > 0)
+		{
+			for (int index = 0; index < _headers.Length; index++)
+			{
+				ExcelHeaderItem header = _headers[index];
+				file.AppendFormat("{0},", (int)header.fieldtype);
+			}
+			file.Remove(file.Length - 1, 1);
+		}
+		file.AppendLine("};\n");
+
 		//Comparison数组，排序时用到
-		file.AppendFormat("\tinternal static Comparison<{0}>[] _Comparison = \n", parserItemName);
-		file.AppendLine("\t{");
-		fun = @"		delegate({0} a, {0} b) {3} return {1}(a._{2}, b._{2}); {4},
+		file.AppendLine("\tstatic Comparison<DataStoreItem>[] ____Comparsions = \n\t{");
+		fun = @"		delegate(DataStoreItem a, DataStoreItem b) {3} return {1}((({0})a).{2}, (({0})b).{2}); {4},
 ";
 		for (int index = 0; index < _headers.Length; index++)
 		{
 			ExcelHeaderItem header = _headers[index];
-			string typeName = "DataItemBase.CompareInt";
+			string typeName = "DataStoreHelper.__CompareInt";
 			switch (header.fieldtype)
 			{
 				case ExceFieldType.LONG:
 					{
-						typeName = "DataItemBase.CompareLong";
+						typeName = "DataStoreHelper.__CompareLong";
 					}
 					break;
 
 				case ExceFieldType.REAL:
 					{
-						typeName = "DataItemBase.CompareSingle";
+						typeName = "DataStoreHelper.__CompareSingle";
 					}
 					break;
 
 				case ExceFieldType.TEXT:
 					{
-						typeName = "DataItemBase.CompareString";
+						typeName = "DataStoreHelper.__CompareString";
 					}
 					break;
 			}
@@ -233,119 +237,31 @@ public class FlatBuffersLoaderBuilder
 		}
 		file.AppendLine("\t};\n");
 
-		//Parse函数
-		file.AppendFormat("\tinternal void Parse(FlatBuffersData.{0} item)\n", structItemName);
-		file.AppendLine("\t{\n\t\t__p=item.table;");
-		for (int index = 0; index < _headers.Length; index++)
-		{
-			ExcelHeaderItem header = _headers[index];
-			string fieldName = buildName(header.fieldname);
-			ExceFieldType excelType = header.fieldtype;
-			if (excelType == ExceFieldType.INTEGER || excelType == ExceFieldType.LONG || excelType == ExceFieldType.REAL)
-			{
-				file.AppendFormat("\t\t_{0} = item.{0};\n", fieldName);
-			}
-		}
-		file.AppendLine("\t\tOnPostParse();\n\t}");
-		file.AppendLine("\n}\n");
-	}
 
-	static string[] _fieldType = { "int", "long", "float"};
-	static string[] _compareFun = { "DataItemBase.CompareInt", "DataItemBase.CompareLong", "DataItemBase.CompareSingle" };
-	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
-	{
-		string fun = @"#if UNITY_EDITOR
-[UnityEditor.InitializeOnLoad]
-#endif
-public static partial class {0}
-{5}
-	static List<{1}> _list = null;
-	static List<{1}>[] _mainKey = null;
-	static ByteBuffer _data = null;
-	public static void LoadDatas()
-	{5}
-		if (_mainKey != null)
-		{5}
-			return;
-		{6}
+		fun = @"	public static int count {5} get {5} return __Instance.__GetLength(); {6} {6}
 
-		if (_data != null)
+    static System.Func<DataStoreItem, bool> ConvertFilter(System.Func<{1}, bool> filter)
+    {5}
+		if (filter != null)
 		{5}
-			_data.Dispose();
-			_data = null;
-		{6}
-
-		_data = DataItemBase.Load(""{2}"");
-		if (_data == null)
-		{5}
-			return;
-		{6}
-
-		_mainKey = new List<{1}>[{4}];
-		FlatBuffersData.{3} structList = FlatBuffersData.{3}.GetRootAs{3}(_data);
-		_list = new List<{1}>(structList.ListLength);
-		for (int index = 0; index < structList.ListLength; index++)
-		{5}
-			{1} item = new {1}();
-			item.Parse(structList.List(index).Value);
-			_list.Add(item);
-		{6}
-		DataItemBase.OnPostLoaded({0}.Dispose);
-	{6}
-
-	public static void Dispose()
-	{5}
-		if(_data != null)
-		{5}
-			_data.Dispose();
-			_data = null;
-		{6}
-
-		if(_list != null)
-		{5}
-			for(int index = 0; index < _list.Count; index ++)
+            return delegate (DataStoreItem item)
 			{5}
-				{1} item = _list[index];
-				item.Dispose();
-			{6}
-			_list = null;
+				return filter(item as {1});
+			{6};
 		{6}
+        return null;
+    {6}
 
-		if(_mainKey != null)
-		{5}
-			for (int index = 0; index < _mainKey.Length; index ++)
-			{5}
-				List<{1}> list = _mainKey[index];
-				if(list != null)
-				{5}
-					list.Clear();
-				{6}
-				_mainKey[index] = null;
-			{6}
-			_mainKey = null;
-		{6}
-	{6}
-
-	public static int count {5} get {5} LoadDatas(); return _list != null ? _list.Count : 0; {6} {6}
+    public static void ____BuildString(ref string str, {1} item, int offset)
+    {5}
+        __Instance.__BuildString(ref str, item, offset);
+    {6}
 
 	public static Query<{1}> Query(System.Func<{1}, bool> filter = null)
 	{5}
-		LoadDatas();
-		return Query<{1}>.Create(_list, filter);
+		return Query<{1}>.Create(filter != null ? delegate({1} item){5} return filter(item as DataStoreItem);{6});
 	{6}
 
-	static void BuildKeyByIndex(int index)
-	{5}
-		LoadDatas();
-		if (_list != null && _mainKey[index] == null)
-		{5}
-			List<{1}> list = new List<{1}>(_list.Count);
-			list.AddRange(_list);
-			_mainKey[index] = list;
-
-			list.Sort({1}._Comparison[index]);
-		{6}
-	{6}
 ";
 		//0:paserName
 		//1:parserItemName
@@ -358,14 +274,9 @@ public static partial class {0}
 
 		//添加编辑器检查函数
 		fun = @"#if UNITY_EDITOR
-	static {0}()
-	{1}
-		DataItemPaser.PushDataItemParser(CreateDataItemPaser);
-	{2}
-
 	static DataItemPaser CreateDataItemPaser()
 	{1}
-		LoadDatas();
+		__Instance.__Init();
 		return new DataItemPaser(";
 		file.AppendFormat(fun, paserName, "{", "}");
 		file.AppendFormat("\"{0}\", new string[]", _loaderName);
@@ -408,8 +319,8 @@ public static partial class {0}
 		file.Append(@"			return array;
 		});
 	}
-	
 #endif
+
 ");
 
 		//添加BuildMainKeyXX函数
@@ -420,11 +331,11 @@ public static partial class {0}
 		//4:parserItemName
 		//5:fieldtype
 		//6:compare fun
-		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} BuildKeyByIndex({1}); return DataItemBase.FindMax<{4}>(_mainKey[{1}], filter); {3}
-	public static void KeyFor{0}() {2} BuildKeyByIndex({1}); {3}
+		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} return __Instance.__FindMax({1}, ConvertFilter(filter)); {3}
+	public static void KeyFor{0}() {2} __Instance.__BuildKeyByField({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value, System.Func<{4}, bool> filter = null)
 	{2}
-		BuildKeyByIndex({1}); return Query<{4}, {5}>.Create(_mainKey[{1}], value, {6}, {4}._Get{0}, filter);
+		return Query<{4}, {5}>.Create(__Instance.__Search<{5}>({1}, {6}, {4}._Get{0}, value, ConvertFilter(filter)));
 	{3}
 
 ";
@@ -479,12 +390,7 @@ using global::System;
 using global::FlatBuffers;
 using System.Collections.Generic;
 
-namespace FlatBuffersData
-{
 ");
-		BuildStructItem(file, structItemName, structListName);
-		BuildStructList(file, structItemName, structListName);
-		file.AppendLine("}\n");
 		BuildItemForParser(file, structItemName, structListName, parserItemName, paserName);
 		BuildParser(file, structItemName, structListName, parserItemName, paserName);
 

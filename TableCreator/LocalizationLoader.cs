@@ -11,8 +11,8 @@ struct LocalizationStructItem : IFlatbufferObject
 	public void __init(int _i, ByteBuffer _bb) { __p.bb_pos = _i; __p.bb = _bb; }
 	public LocalizationStructItem __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-	public string Key { get { return DataItemBase.__GetString(__p, 4, 0); } }
-	public string[] Values { get { return DataItemBase.__GetStringArgs(__p, 4, 1); } }
+	public string Key { get { return DataStoreHelper.__GetString(__p, 4, 0); } }
+	public string[] Values { get { return DataStoreHelper.__GetStringArgs(__p, 4, 1); } }
 }
 
 struct LocalizationStructList : IFlatbufferObject
@@ -59,7 +59,7 @@ public static partial class LocalizationLoader
 
 	public static void LoadDatas()
 	{
-		ByteBuffer data = DataItemBase.Load("localization");
+		ByteBuffer data = DataStoreHelper.LoadByteBuffer("localization");
 		if (data == null)
 		{
 			return;
