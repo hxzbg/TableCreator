@@ -76,11 +76,12 @@ public abstract class DataStoreItem
 
 public class DataStoreSet
 {
+	protected Type m_type;
 	protected int m_fieldsCount = 0;
 	protected string m_assetPath = null;
 	protected ByteBuffer m_buffer = null;
-	FlatbufferDataStore m_structItem = null;
-	FlatbufferDataStore m_structList = null;
+	protected FlatbufferDataStore m_structItem = null;
+	protected FlatbufferDataStore m_structList = null;
 	protected List<DataStoreItem> m_list = null;
 	protected List<DataStoreItem>[] m_mainKeys = null;
 	protected System.Func<DataStoreItem> m_creator = null;
@@ -128,10 +129,10 @@ public class DataStoreSet
         }
     }
 
-	static System.Action m_disposeAll = null;
+	protected static System.Action m_disposeAll = null;
 	public static System.Func<string, ByteBuffer> ByteBufferLoader = null;
 
-	protected bool __Init()
+	protected virtual bool __Init()
 	{
 		if (m_list != null)
 		{

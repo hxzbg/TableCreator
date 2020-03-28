@@ -159,6 +159,7 @@ public partial class {0} : DataStoreSet
     static {0}()
     {5}
         __Instance = new {0}();
+		__Instance.m_type = typeof({1});
         __Instance.m_fieldsCount = {4};
         __Instance.m_assetPath = ""{2}"";
         __Instance.m_creator = delegate(){5} return new {1}();{6};
