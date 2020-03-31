@@ -164,3 +164,18 @@ public class Query<T, TV> : System.IDisposable where T : DataStoreItem
 		}
 	}
 }
+
+public class QueryInt<T> : Query<T, int> where T : DataStoreItem
+{
+
+}
+
+public class QueryLong<T> : Query<T, long> where T : DataStoreItem
+{
+
+}
+
+public class QuerySingle<T> : Query<T, float> where T : DataStoreItem
+{
+
+}

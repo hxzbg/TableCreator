@@ -147,6 +147,7 @@ public class FlatBuffersLoaderBuilder
 	}
 
 	static string[] _fieldType = { "int", "long", "float"};
+	static string[] _searchFun = { "__SearchInt", "__SearchLong", "__SearchSingle" };
 	static string[] _compareFun = { "DataStoreHelper.__CompareInt", "DataStoreHelper.__CompareLong", "DataStoreHelper.__CompareSingle" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
@@ -342,7 +343,7 @@ public partial class {0} : DataStoreSet
 	public static void KeyFor{0}() {2} __Instance.__BuildKeyByField({1}); {3}
 	public static Query<{4}, {5}> Query{0}({5} value, System.Func<{4}, bool> filter = null)
 	{2}
-		return Query<{4}, {5}>.Create(__Instance.__Search<{5}>({1}, {6}, {4}._Get{0}, value, ConvertFilter(filter)));
+		return Query<{4}, {5}>.Create(__Instance.{7}({1}, {6}, {4}._Get{0}, value, ConvertFilter(filter)));
 	{3}
 
 ";
@@ -358,7 +359,8 @@ public partial class {0} : DataStoreSet
 					{
 						string fieldType = _fieldType[(int)excelType - 1];
 						string compareFun = _compareFun[(int)excelType - 1];
-						file.AppendFormat(fun, buildName(header.fieldname), index, "{", "}", parserItemName, fieldType, compareFun);
+						string searchFun = _searchFun[(int)excelType - 1];
+						file.AppendFormat(fun, buildName(header.fieldname), index, "{", "}", parserItemName, fieldType, compareFun, searchFun);
 					}
 					break;
 

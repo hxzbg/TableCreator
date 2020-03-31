@@ -44,19 +44,19 @@ public class FlatbufferDataStore : IFlatbufferObject
 
 	public int GetIntValue(int index)
 	{
-		int o = __p.__offset((1 + index) * 2);
+		int o = __p.__offset((2 + index) * 2);
 		return o != 0 ? __p.bb.GetInt(o + __p.bb_pos) : 0;
 	}
 
 	public float GetFloatValue(int index)
 	{
-		int o = __p.__offset((1 + index) * 2);
+		int o = __p.__offset((2 + index) * 2);
 		return o != 0 ? __p.bb.GetFloat(o + __p.bb_pos) : 0;
 	}
 
 	public long GetLongValue(int index)
 	{
-		int o = __p.__offset((1 + index) * 2);
+		int o = __p.__offset((2 + index) * 2);
 		return o != 0 ? __p.bb.GetLong(o + __p.bb_pos) : 0;
 	}
 
@@ -165,7 +165,6 @@ public class DataStoreSet
 		}
 		m_disposeAll += __Disposed;
 		return true;
-		//DataStoreItem.OnPostLoaded(SqliteStat1.Dispose);
 	}
 
     protected void __BuildString(ref string str, DataStoreItem item, int offset)
@@ -178,7 +177,7 @@ public class DataStoreSet
 		DataStoreHelper.__BuildString(ref str, m_structItem.table, offset);
 	}
 
-    protected void __BuildKeyByField(int field)
+    protected virtual void __BuildKeyByField(int field)
     {
 		__Init();
 		if (m_list != null && m_mainKeys[field] == null)
@@ -234,10 +233,22 @@ public class DataStoreSet
 		return QueryDataStore.Create(m_list, filter);
 	}
 
-	protected QueryDataStore<TV> __Search<TV>(int field, System.Func<TV, TV, int> comparison, System.Func<DataStoreItem, TV> get_value, TV value, System.Func<DataStoreItem, bool> filter = null)
+	protected virtual QueryDataStoreInt __SearchInt(int field, System.Func<int, int, int> comparison, System.Func<DataStoreItem, int> get_value, int value, System.Func<DataStoreItem, bool> filter = null)
 	{
 		__BuildKeyByField(field);
-		return QueryDataStore<TV>.Create(m_mainKeys[field], value, comparison, get_value, filter);
+		return (QueryDataStoreInt)QueryDataStoreInt.Create(m_mainKeys[field], value, comparison, get_value, filter);
+	}
+
+	protected virtual QueryDataStoreLong __SearchLong(int field, System.Func<long, long, int> comparison, System.Func<DataStoreItem, long> get_value, long value, System.Func<DataStoreItem, bool> filter = null)
+	{
+		__BuildKeyByField(field);
+		return (QueryDataStoreLong)QueryDataStoreLong.Create(m_mainKeys[field], value, comparison, get_value, filter);
+	}
+
+	protected virtual QueryDataStoreSingle __SearchSingle(int field, System.Func<float, float, int> comparison, System.Func<DataStoreItem, float> get_value, float value, System.Func<DataStoreItem, bool> filter = null)
+	{
+		__BuildKeyByField(field);
+		return (QueryDataStoreSingle)QueryDataStoreSingle.Create(m_mainKeys[field], value, comparison, get_value, filter);
 	}
 
 	protected void __Disposed()
@@ -587,14 +598,12 @@ public class QueryDataStore: System.IDisposable
 
 public class QueryDataStore<TV> : System.IDisposable
 {
-	int _position;
-	List<DataStoreItem> _list;
-	TV _value = default(TV);
-	System.Func<DataStoreItem, bool> _filter = null;
-	System.Func<DataStoreItem, TV> _get_value = null;
-	System.Func<TV, TV, int> _comparison = null;
-	LinkedListNode<QueryDataStore<TV>> _node = null;
-	static LinkedList<QueryDataStore<TV>> _inactiveList = new LinkedList<QueryDataStore<TV>>();
+	protected int _position;
+	protected List<DataStoreItem> _list;
+	protected TV _value = default(TV);
+	protected System.Func<DataStoreItem, bool> _filter = null;
+	protected System.Func<DataStoreItem, TV> _get_value = null;
+	protected System.Func<TV, TV, int> _comparison = null;
 
 	public DataStoreItem Value
 	{
@@ -603,18 +612,7 @@ public class QueryDataStore<TV> : System.IDisposable
 
 	public static QueryDataStore<TV> Create(List<DataStoreItem> list, TV value, System.Func<TV, TV, int> comparison, System.Func<DataStoreItem, TV> get_value, System.Func<DataStoreItem, bool> checker = null)
 	{
-		QueryDataStore<TV> query = null;
-		if (_inactiveList.Count > 0)
-		{
-			query = _inactiveList.Last.Value;
-			_inactiveList.Remove(query._node);
-		}
-		else
-		{
-			query = new QueryDataStore<TV>();
-			query._node = new LinkedListNode<QueryDataStore<TV>>(query);
-		}
-
+		QueryDataStore<TV> query = new QueryDataStore<TV>();
 		query._list = list;
 		query._value = value;
 		query._filter = checker;
@@ -666,10 +664,6 @@ public class QueryDataStore<TV> : System.IDisposable
 		_list = null;
 		_get_value = null;
 		_comparison = null;
-		if (_node.List == null)
-		{
-			_inactiveList.AddFirst(_node);
-		}
 	}
 
 	public void Release()
@@ -692,4 +686,19 @@ public class QueryDataStore<TV> : System.IDisposable
 			return count;
 		}
 	}
+}
+
+public class QueryDataStoreInt : QueryDataStore<int>
+{
+
+}
+
+public class QueryDataStoreLong : QueryDataStore<long>
+{
+
+}
+
+public class QueryDataStoreSingle : QueryDataStore<float>
+{
+
 }
