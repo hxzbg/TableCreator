@@ -74,41 +74,50 @@ namespace TableCreator
 					}
 				}
 
+				string workPath = null;
 				XmlElement config_node = null;
 				XmlDocument doc = new XmlDocument();
 				string exeRoot = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+				string[] searchPaths = new string[] {Directory.GetCurrentDirectory(), exeRoot};
 				string configPath = Path.Combine(exeRoot, "TableCreatorConfig.xml");
 				if (string.IsNullOrEmpty(bin_out) || string.IsNullOrEmpty(sharp_out))
 				{
-					if (File.Exists(configPath))
+					for(int i = 0; i < searchPaths.Length; i ++)
 					{
-						doc.Load(configPath);
-						config_node = doc.SelectSingleNode("/config") as XmlElement;
-						if (config_node != null)
+						string searchPath = Path.Combine(searchPaths[i], "TableCreatorConfig.xml");
+						if (File.Exists(searchPath))
 						{
-							if (config_node.HasAttribute("bytes_output"))
+							doc.Load(searchPath);
+							config_node = doc.SelectSingleNode("/config") as XmlElement;
+							if (config_node != null)
 							{
-								bin_out = config_node.GetAttribute("bytes_output");
-							}
+								configPath = searchPath;
+								workPath = searchPaths[i];
+								if (config_node.HasAttribute("bytes_output"))
+								{
+									bin_out = config_node.GetAttribute("bytes_output");
+								}
 
-							if (config_node.HasAttribute("sharp_output"))
-							{
-								sharp_out = config_node.GetAttribute("sharp_output");
-							}
+								if (config_node.HasAttribute("sharp_output"))
+								{
+									sharp_out = config_node.GetAttribute("sharp_output");
+								}
 
-							if (config_node.HasAttribute("mysql_output"))
-							{
-								mysql_out = config_node.GetAttribute("mysql_output");
-							}
+								if (config_node.HasAttribute("mysql_output"))
+								{
+									mysql_out = config_node.GetAttribute("mysql_output");
+								}
 
-							if (config_node.HasAttribute("dictionary"))
-							{
-								dict_path = config_node.GetAttribute("dictionary");
-							}
+								if (config_node.HasAttribute("dictionary"))
+								{
+									dict_path = config_node.GetAttribute("dictionary");
+								}
 
-							if (config_node.HasAttribute("namespace"))
-							{
-								name_space = config_node.GetAttribute("namespace");
+								if (config_node.HasAttribute("namespace"))
+								{
+									name_space = config_node.GetAttribute("namespace");
+								}
+								break;
 							}
 						}
 					}
@@ -127,20 +136,20 @@ namespace TableCreator
 
 				if(string.IsNullOrEmpty(bin_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(bin_out)))
 				{
-					bin_out = Path.Combine(exeRoot, bin_out);
+					bin_out = Path.Combine(workPath, bin_out);
 				}
 
 				if (string.IsNullOrEmpty(sharp_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(sharp_out)))
 				{
-					sharp_out = Path.Combine(exeRoot, sharp_out);
+					sharp_out = Path.Combine(workPath, sharp_out);
 				}
 
 				if (string.IsNullOrEmpty(mysql_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(mysql_out)))
 				{
-					mysql_out = Path.Combine(exeRoot, mysql_out);
+					mysql_out = Path.Combine(workPath, mysql_out);
 				}
 
-				string fbspath = Path.Combine(exeRoot, "FBS.txt");
+				string fbspath = Path.Combine(workPath, "FBS.txt");
 				Dictionary<string, ExcelHeaderItem[]> excelheaders = ExcelParser.ParseExcelHeaderFromFbs(fbspath);
 
 				if(rebuiild)
@@ -168,7 +177,7 @@ namespace TableCreator
 				Dictionary<string, string> user_dict = new Dictionary<string, string>();
 				if (string.IsNullOrEmpty(dict_path) == false && string.IsNullOrEmpty(Path.GetPathRoot(dict_path)))
 				{
-					dict_path = Path.Combine(exeRoot, dict_path);
+					dict_path = Path.Combine(workPath, dict_path);
 				}
 
 				Console.WriteLine(string.Format("解析字典文件 : {0}", dict_path));
