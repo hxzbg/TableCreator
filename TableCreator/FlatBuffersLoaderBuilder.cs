@@ -41,9 +41,6 @@ public class FlatBuffersLoaderBuilder
 	{
 		string fun = @"public partial class {0} : DataStoreItem
 {1}
-	partial void OnPostParse();
-	public override void Dispose()
-	{1}
 ";
 		if(string.IsNullOrEmpty(_namespace) == false)
 		{
@@ -51,147 +48,77 @@ public class FlatBuffersLoaderBuilder
 		}
 		file.AppendFormat(fun, parserItemName, "{", "}");
 
-		//实现Dispose函数
-		for(int i = 0; i < _headers.Length; i ++)
-		{
-			ExcelHeaderItem header = _headers[i];
-			if (header.fieldtype == ExceFieldType.TEXT)
-			{
-				file.AppendFormat("\t\t_{0} = null;\n", buildName(header.fieldname));
-			}
-		}
-		file.AppendLine("\t}\n");
-
 		//成员变量和属性,以及Get回调方法
 
-		fun = @"	{0} _{1} = {3};
-	public {0} {1} {4} get {4} return _{1}; {5} {5}
-	internal static System.Func<DataStoreItem, {0}> _Get{1} = delegate (DataStoreItem item) {4} return (({2})item).{1}; {5};
-
-";
-		string fun_string = @"	{0} _{1} = null;
-	public {0} {1} {4} get {4} if(_{1} == null) {7}.BuildString(ref _{1}, this, {6}); return _{1}; {5} {5}
-
+		fun = @"	public {2} {3} {0} get {0} return {4}((int){5}.Field.{3}); {1} {1}
 ";
 		for (int index = 0; index < _headers.Length; index++)
 		{
 			string typeName = "int";
-			string defValue = "0";
-			string format = fun;
+			string funName = "GetInt32";
 			ExcelHeaderItem header = _headers[index];
 			switch (header.fieldtype)
 			{
 				case ExceFieldType.LONG:
 					{
 						typeName = "long";
-						defValue = "0";
+						funName = "GetInt64";
 					}
 					break;
 
 				case ExceFieldType.REAL:
 					{
 						typeName = "float";
-						defValue = "0.0f";
+						funName = "GetSingle";
 					}
 					break;
 
 				case ExceFieldType.TEXT:
 					{
-						format = fun_string;
 						typeName = "string";
-						defValue = "null";
+						funName = "GetString";
 					}
 					break;
 			}
 
-			//0:typeName
-			//1:funName
-			//2:classname
-			//3:defValue;
-			//4:{
-			//5:}
-			file.AppendFormat(format, typeName, buildName(header.fieldname), parserItemName, defValue, "{", "}", 4 + index * 2, paserName);
+			//0:"{"
+			//1:"}"
+			//2:value type
+			//3:value name;
+			//4:function name
+			//5:field id
+			file.AppendFormat(fun, "{", "}", typeName, buildName(header.fieldname), funName, paserName);
 		}
-
-		//Parse函数
-		file.AppendFormat("\tpublic override void Parse(int position, FlatbufferDataStore item)\n", structItemName);
-		file.AppendLine("\t{\n");
-		for (int index = 0; index < _headers.Length; index++)
-		{
-			string fieldNethod = null;
-			ExcelHeaderItem header = _headers[index];
-			string fieldName = buildName(header.fieldname);
-			ExceFieldType excelType = header.fieldtype;
-            switch(excelType)
-            {
-				case ExceFieldType.INTEGER:
-					fieldNethod = "GetIntValue";
-					break;
-
-				case ExceFieldType.LONG:
-					fieldNethod = "GetLongValue";
-					break;
-
-				case ExceFieldType.REAL:
-					fieldNethod = "GetFloatValue";
-					break;
-
-			}
-			if (string.IsNullOrEmpty(fieldNethod) == false)
-			{
-				file.AppendFormat("\t\t_{0} = item.{1}({2});\n", fieldName, fieldNethod, index);
-			}
-		}
-		file.AppendLine("\t\tOnPostParse();\n\t}");
-		file.AppendLine("\n}\n");
+		file.AppendLine("}\n");
 	}
 
 	static string[] _fieldType = { "int", "long", "float"};
-	static string[] _searchFun = { "__SearchInt", "__SearchLong", "__SearchSingle" };
-	static string[] _compareFun = { "DataStoreHelper.__CompareInt", "DataStoreHelper.__CompareLong", "DataStoreHelper.__CompareSingle" };
+	static string[] _searchFun = { "__SearchInt32", "__SearchInt64", "__SearchSingle" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
-		string fun = @"#if UNITY_EDITOR
+		string fun = @"
+#if UNITY_EDITOR
 [UnityEditor.InitializeOnLoad]
 #endif
-public partial class {0} : DataStoreSet
-{5}
-	static {0} __Instance = null;
-    static {0}()
-    {5}
-        __Instance = new {0}();
-		__Instance.m_type = typeof({1});
-        __Instance.m_fieldsCount = {4};
-        __Instance.m_assetPath = ""{2}"";
-        __Instance.m_creator = delegate(){5} return new {1}();{6};
-        __Instance.__FieldNames = ____FieldNames;
-        __Instance.__Comparsions = ____Comparsions;
-        __Instance.__FieldAttributes = ____FieldAttributes;
-#if UNITY_EDITOR
-		DataItemPaser.PushDataItemParser(CreateDataItemPaser);
-#endif
-    {6}
-
-    public static void LoadDatas()
-    {5}
-        __Instance.__Init();
-    {6}
-
+public partial class {1} : DataStoreSet
+{0}
+	static {1} __Instance = null;
 ";
-        file.AppendFormat(fun, paserName, parserItemName, _loaderName, structListName, _headers.Length, "{", "}");
+        file.AppendFormat(fun, "{", paserName);
 
-        //fieldName
-		file.Append("\tstatic string[] ____FieldNames = {");
-        if(_headers.Length > 0)
-        {
+		file.Append(@"	public enum Field
+	{
+");
+		if (_headers.Length > 0)
+		{
 			for (int index = 0; index < _headers.Length; index++)
 			{
 				ExcelHeaderItem header = _headers[index];
-				file.AppendFormat("\"_{0}\",", buildName(header.fieldname));
+				file.AppendFormat("		{0}={1},\n", buildName(header.fieldname), index);
 			}
-			file.Remove(file.Length - 1, 1);
+			file.Remove(file.Length - 2, 2);
 		}
-		file.AppendLine("};\n");
+		file.Append("\n	}\n");
 
 		//fieldAttributes
 		file.Append("\tstatic int[] ____FieldAttributes = {");
@@ -204,83 +131,50 @@ public partial class {0} : DataStoreSet
 			}
 			file.Remove(file.Length - 1, 1);
 		}
-		file.AppendLine("};\n");
+		file.Append("};\n");
 
-		//Comparison数组，排序时用到
-		file.AppendLine("\tstatic Comparison<DataStoreItem>[] ____Comparsions = \n\t{");
-		fun = @"		delegate(DataStoreItem a, DataStoreItem b) {3} return {1}((({0})a).{2}, (({0})b).{2}); {4},
+		fun = @"
+    static {2}()
+    {0}
+        __Instance = new {2}();
+		__Instance.__TypeForItem = typeof({3});
+        __Instance.__AssetPath = ""{4}"";
+        __Instance.__FieldAttributes = ____FieldAttributes;
+#if UNITY_EDITOR
+		DataItemPaser.PushDataItemParser(CreateDataItemPaser);
+#endif
+    {1}
+
+    public static void LoadDatas()
+    {0}
+        __Instance.__Init();
+    {1}
+
+	public static int Count {0} get {0} return __Instance.__GetLength(); {1} {1}
+	public static {3} Max(Field field, System.Func<DataStoreItem, bool> filter = null) {0} return ({3})__Instance.__FindMax((int)field, filter); {1}
+	public static void BuildKeyByField(Field field) {0} __Instance.__BuildKeyByField((int)field); {1}
+	public static QueryDataStore Query(System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__Search(filter);
+	{1}
+	public static QueryDataStoreInt32 QueryInt32(Field field, int value, System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__SearchInt32((int)field, value, filter);
+	{1}
+	public static QueryDataStoreSingle QuerySingle(Field field, float value, System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__SearchSingle((int)field, value, filter);
+	{1}
+	public static QueryDataStoreInt64 QueryInt64(Field field, long value, System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__SearchInt64((int)field, value, filter);
+	{1}
 ";
-		for (int index = 0; index < _headers.Length; index++)
-		{
-			ExcelHeaderItem header = _headers[index];
-			string typeName = "DataStoreHelper.__CompareInt";
-			switch (header.fieldtype)
-			{
-				case ExceFieldType.LONG:
-					{
-						typeName = "DataStoreHelper.__CompareLong";
-					}
-					break;
-
-				case ExceFieldType.REAL:
-					{
-						typeName = "DataStoreHelper.__CompareSingle";
-					}
-					break;
-
-				case ExceFieldType.TEXT:
-					{
-						typeName = "DataStoreHelper.__CompareString";
-					}
-					break;
-			}
-
-			//0:parserItemName
-			//1:funName
-			//2:fieldname
-			//3:{
-			//4:}
-			file.AppendFormat(fun, parserItemName, typeName, buildName(header.fieldname), "{", "}");
-		}
-		file.AppendLine("\t};\n");
-
-
-		fun = @"	public static int count {5} get {5} return __Instance.__GetLength(); {6} {6}
-
-    static System.Func<DataStoreItem, bool> ConvertFilter(System.Func<{1}, bool> filter)
-    {5}
-		if (filter != null)
-		{5}
-            return delegate (DataStoreItem item)
-			{5}
-				return filter(item as {1});
-			{6};
-		{6}
-        return null;
-    {6}
-
-    public static void BuildString(ref string str, {1} item, int offset)
-    {5}
-        __Instance.__BuildString(ref str, item, offset);
-    {6}
-
-	public static Query<{1}> Query(System.Func<{1}, bool> filter = null)
-	{5}
-		return Query<{1}>.Create(__Instance.__Search(ConvertFilter(filter)));
-	{6}
-
-";
-		//0:paserName
-		//1:parserItemName
-		//2:excelname;
-		//3:structListName
-		//4:fieldCount
-		//5:{
-		//6:}
-		file.AppendFormat(fun, paserName, parserItemName, _loaderName, structListName, _headers.Length, "{", "}");
+		file.AppendFormat(fun, "{", "}", paserName, parserItemName, _loaderName);
 
 		//添加编辑器检查函数
-		fun = @"#if UNITY_EDITOR
+		fun = @"
+#if UNITY_EDITOR
 	static DataItemPaser CreateDataItemPaser()
 	{1}
 		__Instance.__Init();
@@ -311,7 +205,7 @@ public partial class {0} : DataStoreSet
                 return null;
             {1}
 			string[] array = new string[{2}];
-		", "{", "}", _headers.Length, parserItemName);
+", "{", "}", _headers.Length, parserItemName);
 		for(int i = 0; i < _headers.Length; i ++)
 		{
 			ExcelHeaderItem header = _headers[i];
@@ -328,46 +222,7 @@ public partial class {0} : DataStoreSet
 		});
 	}
 #endif
-
 ");
-
-		//添加BuildMainKeyXX函数
-		//0:fieldname;
-		//1:index
-		//2:{
-		//3:}
-		//4:parserItemName
-		//5:fieldtype
-		//6:compare fun
-		fun = @"	public static {4} Max{0}(System.Func<{4}, bool> filter = null) {2} return __Instance.__FindMax({1}, ConvertFilter(filter)) as {4}; {3}
-	public static void KeyFor{0}() {2} __Instance.__BuildKeyByField({1}); {3}
-	public static Query<{4}, {5}> Query{0}({5} value, System.Func<{4}, bool> filter = null)
-	{2}
-		return Query<{4}, {5}>.Create(__Instance.{7}({1}, {6}, {4}._Get{0}, value, ConvertFilter(filter)));
-	{3}
-
-";
-		for (int index = 0; index < _headers.Length; index++)
-		{
-			ExcelHeaderItem header = _headers[index];
-			ExceFieldType excelType = header.fieldtype;
-			switch (excelType)
-			{
-				case ExceFieldType.INTEGER:
-				case ExceFieldType.LONG:
-				case ExceFieldType.REAL:
-					{
-						string fieldType = _fieldType[(int)excelType - 1];
-						string compareFun = _compareFun[(int)excelType - 1];
-						string searchFun = _searchFun[(int)excelType - 1];
-						file.AppendFormat(fun, buildName(header.fieldname), index, "{", "}", parserItemName, fieldType, compareFun, searchFun);
-					}
-					break;
-
-				default:
-					break;
-			}
-		}
 
 		file.AppendLine("}");
 
