@@ -139,7 +139,7 @@ public class UserDictionarySaver
 		}
 
 		ExcelPackage package = null;
-		using (FileStream stream = File.Open(path + ".xlsx", FileMode.Open, FileAccess.Read))
+		using (FileStream stream = File.Open(path, FileMode.Open, FileAccess.Read))
 		{
 			int rows = 0;
 			package = new ExcelPackage(stream);
@@ -183,8 +183,8 @@ public class UserDictionarySaver
 
 		if(package != null)
 		{
-			File.Delete(path + ".xlsx");
-			using (Stream stream = new FileStream(path + ".xlsx", FileMode.Create))
+			File.Delete(path);
+			using (Stream stream = new FileStream(path, FileMode.Create))
 			{
 				package.SaveAs(stream);
 			}

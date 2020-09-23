@@ -93,7 +93,7 @@ public class FlatBuffersLoaderBuilder
 	}
 
 	static string[] _fieldType = { "int", "long", "float"};
-	static string[] _searchFun = { "__SearchInt32", "__SearchInt64", "__SearchSingle" };
+	static string[] _queryFun = { "QueryInt32", "QueryInt64", "QuerySingle" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
 		string fun = @"
@@ -150,13 +150,31 @@ public partial class {1} : DataStoreSet
         __Instance.__Init();
     {1}
 
+    static System.Func<DataStoreItem, bool> ConvertFilter(System.Func<{3}, bool> filter)
+    {0}
+		if (filter != null)
+		{0}
+            return delegate (DataStoreItem item)
+			{0}
+				return filter(item as {3});
+			{1};
+		{1}
+        return null;
+    {1}
+
 	public static int Count {0} get {0} return __Instance.__GetLength(); {1} {1}
-	public static {3} Max(Field field, System.Func<DataStoreItem, bool> filter = null) {0} return ({3})__Instance.__FindMax((int)field, filter); {1}
-	public static void BuildKeyByField(Field field) {0} __Instance.__BuildKeyByField((int)field); {1}
+	public static {3} Max(Field field, System.Func<{3}, bool> filter = null) {0} return ({3})__Instance.__FindMax((int)field, ConvertFilter(filter)); {1}
+	public static Query<{3}> Query(System.Func<{3}, bool> filter = null)
+	{0}
+		return Query<{3}>.Create(__Instance.__Search(ConvertFilter(filter)));
+	{1}
+	/*
 	public static QueryDataStore Query(System.Func<DataStoreItem, bool> filter = null)
 	{0}
 		return __Instance.__Search(filter);
 	{1}
+	*/
+	public static void BuildKeyByField(Field field) {0} __Instance.__BuildKeyByField((int)field); {1}
 	public static QueryDataStoreInt32 QueryInt32(Field field, int value, System.Func<DataStoreItem, bool> filter = null)
 	{0}
 		return __Instance.__SearchInt32((int)field, value, filter);
@@ -223,6 +241,43 @@ public partial class {1} : DataStoreSet
 	}
 #endif
 ");
+
+		//添加BuildMainKeyXX函数
+		//0:fieldname;
+		//1:index
+		//2:{
+		//3:}
+		//4:parserItemName
+		//5:fieldtype
+		//6:compare fun
+		fun = @"
+	public static Query<{2}, {3}> Query{5}({3} value, System.Func<{2}, bool> filter = null)
+	{0}
+		return Query<{2}, {3}>.Create({4}(Field.{5}, value, ConvertFilter(filter)));
+	{1}
+
+";
+		for (int index = 0; index < _headers.Length; index++)
+		{
+			ExcelHeaderItem header = _headers[index];
+			ExceFieldType excelType = header.fieldtype;
+			switch (excelType)
+			{
+				case ExceFieldType.INTEGER:
+				case ExceFieldType.LONG:
+				case ExceFieldType.REAL:
+					{
+						string fieldType = _fieldType[(int)excelType - 1];
+						string queryFun = _queryFun[(int)excelType - 1];
+						file.AppendFormat(fun, "{", "}", parserItemName, fieldType, queryFun, buildName(header.fieldname));
+					}
+					break;
+
+				default:
+					break;
+			}
+		}
+
 
 		file.AppendLine("}");
 

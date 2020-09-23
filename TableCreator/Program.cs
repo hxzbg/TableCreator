@@ -67,7 +67,7 @@ namespace TableCreator
 								list.Add(files[i]);
 							}
 						}
-						else if ((attributes & FileAttributes.Archive) == FileAttributes.Archive)
+						else
 						{
 							list.Add(arg);
 						}
@@ -273,7 +273,7 @@ namespace TableCreator
 					{
 						FlatBuffersCreator creator = new FlatBuffersCreator(parser, user_dict);
 						string binpath = creator.SaveFlatBuffer(creator.CreateFlatBufferBuilder(), bin_out);
-						if(string.IsNullOrEmpty(binpath))
+						if (string.IsNullOrEmpty(binpath))
 						{
 							Console.WriteLine("生成二进制文件失败。");
 						}

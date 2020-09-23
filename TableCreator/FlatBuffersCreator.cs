@@ -3,6 +3,7 @@ using System.IO;
 using FlatBuffers;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Text;
 
 class FlatBuffersCreator
 {
@@ -164,6 +165,163 @@ class FlatBuffersCreator
 		return (key << 16) + (ulong)field;
 	}
 
+	class ExcelFieldValues
+	{
+		public int m_position;
+		public int m_int32;
+		public float m_single;
+		public long m_int64;
+
+		public ExcelFieldValues(int position)
+		{
+			m_position = position;
+		}
+	}
+
+	int AppendIndexs(FlatBufferBuilder builder)
+    {
+		//生成索引数据
+		int[] indexArray = new int[_excel.FieldCount];
+		//为排序做准备
+		List<ExcelFieldValues> filedValues = new List<ExcelFieldValues>(_excel.RowCount);
+		{
+			for (int i = 0; i < _excel.RowCount; i++)
+			{
+				filedValues.Add(new ExcelFieldValues(i));
+			}
+		}
+
+		for (int j = 0; j < _excel.FieldCount; j++)
+		{
+			ExceFieldType fieldType = _excel.GetFieldType(j);
+			for (int i = 0; i < _excel.RowCount; i++)
+			{
+				ExcelFieldValues item = filedValues[i];
+				switch (fieldType)
+				{
+					case ExceFieldType.INTEGER:
+						{
+							item.m_int32 = (int)_excel.GetLong(i, j);
+						}
+						break;
+
+					case ExceFieldType.LONG:
+						{
+							item.m_int64 = _excel.GetLong(i, j);
+						}
+						break;
+
+					case ExceFieldType.REAL:
+						{
+							item.m_single = _excel.GetSingle(i, j);
+						}
+						break;
+				}
+			}
+
+			switch (fieldType)
+			{
+				case ExceFieldType.INTEGER:
+				case ExceFieldType.LONG:
+				case ExceFieldType.REAL:
+					{
+						filedValues.Sort(delegate (ExcelFieldValues a, ExcelFieldValues b)
+						{
+							int result = 0;
+							switch (fieldType)
+							{
+								case ExceFieldType.INTEGER:
+									{
+										result = DataStoreHelper.__CompareInt32(a.m_int32, b.m_int32);
+									}
+									break;
+
+								case ExceFieldType.LONG:
+									{
+										result = DataStoreHelper.__CompareInt64(a.m_int64, b.m_int64);
+									}
+									break;
+
+								case ExceFieldType.REAL:
+									{
+										result = DataStoreHelper.__CompareSingle(a.m_single, b.m_single);
+									}
+									break;
+							}
+
+							if (result == 0 && a.m_position != b.m_position)
+							{
+								result = DataStoreHelper.__CompareInt32(a.m_position, b.m_position);
+							}
+							return result;
+						});
+
+						/*
+						bool writelog = false;
+						if (writelog)
+						{
+							StringBuilder sb = new StringBuilder();
+							for (int i = 0; i < filedValues.Count; i++)
+							{
+								switch (fieldType)
+								{
+									case ExceFieldType.INTEGER:
+										{
+											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int32);
+										}
+										break;
+
+									case ExceFieldType.LONG:
+										{
+											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int64);
+										}
+										break;
+
+									case ExceFieldType.REAL:
+										{
+											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_single);
+										}
+										break;
+								}
+							}
+							File.WriteAllText(@"Y:\Documents\Work\log\log.csv", sb.ToString());
+						}
+						*/
+
+						builder.StartVector(4, filedValues.Count, 4);
+						for (int i = _excel.RowCount - 1; i >= 0; i--)
+						{
+							ExcelFieldValues item = filedValues[i];
+							builder.AddInt(item.m_position);
+						}
+						indexArray[j] = builder.EndVector().Value;
+					}
+					break;
+
+				default:
+					{
+						builder.StartVector(4, 0, 4);
+						indexArray[j] = builder.EndVector().Value;
+					}
+					break;
+			}
+			builder.StartObject(1);
+			builder.AddOffset(0, indexArray[j], 0);
+			indexArray[j] = builder.EndObject();
+		}
+
+		builder.StartVector(4, indexArray.Length, 4);
+		for (int i = indexArray.Length - 1; i >= 0; i--)
+		{
+			builder.AddOffset(indexArray[i]);
+		}
+		int indexObject = builder.EndVector().Value;
+		builder.StartObject(1);
+		builder.AddOffset(0, indexObject, 0);
+		indexObject = builder.EndObject();
+		return indexObject;
+	}
+
 	public FlatBufferBuilder CreateFlatBufferBuilder()
 	{
 		if(_excel == null || _excel.RowCount <= 0)
@@ -173,6 +331,16 @@ class FlatBuffersCreator
 
 		string excelname = _excel.FileName;
 		FlatBufferBuilder builder = new FlatBufferBuilder(1);
+		builder.Finish(AppendIndexs(builder));
+		int[] int32Array = null;
+		FlatbufferDataStore test = FlatbufferDataStore.CreateFlatbufferDataStore(builder.DataBuffer);
+		FlatbufferDataStore cc = new FlatbufferDataStore();
+		for(int i = 0; i < test.Length; i ++)
+        {
+			test.AppendChild(cc, i, 0);
+			int32Array = cc.GetInt32Array();
+		}
+
 		//提前收集所有字符串
 		Dictionary<ulong, StringUnit> unitResult = new Dictionary<ulong, StringUnit>();
 		Dictionary<string, int> dict = new Dictionary<string, int>();
@@ -269,9 +437,15 @@ class FlatBuffersCreator
 			builder.AddOffset(items[index]);
 		}
 		int vector = builder.EndVector().Value;
-
+		int indexs = AppendIndexs(builder);
 		builder.StartObject(1);
+		builder.AddOffset(0, indexs, 0);
+		indexs = builder.EndObject();
+
+		builder.StartObject(2);
 		builder.AddOffset(0, vector, 0);
+		builder.AddOffset(1, indexs, 0);
+		
 		builder.Finish(builder.EndObject());
 		
 		return builder;
