@@ -19,125 +19,6 @@ public class UserDictionarySaver
 			return;
 		}
 
-		List<int> indexs = new List<int>();
-		List<int> lengths = new List<int>();
-		StringBuilder sb = new StringBuilder();
-		System.Action<int, int> ParserAction = delegate (int start, int length)
-		{
-			indexs.Add(start);
-			lengths.Add(length);
-		};
-
-		Dictionary<string, string>.Enumerator em;
-		{
-			Dictionary<string, string> newdict = new Dictionary<string, string>();
-			em = dict.GetEnumerator();
-			while (em.MoveNext())
-			{
-				KeyValuePair<string, string> pair = em.Current;
-
-				sb.Remove(0, sb.Length);
-				int start = 0;
-				string line = pair.Value;
-				FormatOperatorChecker.ParseFormaters(line, ParserAction);
-				if (indexs.Count > 0)
-				{
-					int lastOffset = -1;
-					for (int index = indexs.Count - 1; index >= 0; index--)
-					{
-						start = indexs[index];
-						char c = line[start];
-						switch (c)
-						{
-							case '{':
-								{
-									int offset = 0;
-									start = start + 1;
-									c = line[start];
-									if (c <= 'Z')
-									{
-										offset = c - 'A';
-									}
-									else if (c <= 'z')
-									{
-										offset = c - 'a' + 26;
-									}
-									if (offset > lastOffset)
-									{
-										lastOffset = offset;
-										lastOffset++;
-									}
-								}
-								break;
-
-							default:
-								break;
-						}
-					}
-
-					{
-						start = 0;
-						if (lastOffset <= 0)
-						{
-							lastOffset = 0;
-						}
-						for (int index = 0; index < indexs.Count; index++)
-						{
-							int pos = indexs[index];
-							if (pos > start)
-							{
-								sb.Append(line.Substring(start, pos - start));
-							}
-							start = pos;
-							char c = line[start];
-							switch (c)
-							{
-								case '{':
-									{
-										int offset = 0;
-										start = start + 1;
-										c = line[start];
-										if (c <= 'Z')
-										{
-											offset = c - 'A';
-										}
-										else if (c <= 'z')
-										{
-											offset = c - 'a' + 26;
-										}
-										sb.Append("{");
-										sb.Append((char)('0' + offset));
-										sb.Append('}');
-									}
-									break;
-
-								case '%':
-									{
-										sb.Append("{");
-										sb.Append((char)('0' + lastOffset));
-										sb.Append('}');
-										lastOffset++;
-									}
-									break;
-
-								default:
-									break;
-							}
-							start = start + lengths[index] + 1;
-						}
-					}
-				}
-				indexs.Clear();
-				if (start < line.Length)
-				{
-					sb.Append(line.Substring(start));
-				}
-
-				newdict.Add(pair.Key, sb.ToString());
-			}
-			dict = newdict;
-		}
-
 		ExcelPackage package = null;
 		using (FileStream stream = File.Open(path, FileMode.Open, FileAccess.Read))
 		{
@@ -168,7 +49,7 @@ public class UserDictionarySaver
 			}
 
 			rows += 1;
-			em = dict.GetEnumerator();
+			Dictionary<string, string>.Enumerator em = dict.GetEnumerator();
 			while (em.MoveNext())
 			{
 				KeyValuePair<string, string> pair = em.Current;
