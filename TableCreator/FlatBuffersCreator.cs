@@ -197,6 +197,7 @@ class FlatBuffersCreator
 			for (int i = 0; i < _excel.RowCount; i++)
 			{
 				ExcelFieldValues item = filedValues[i];
+				item.m_position = i;
 				switch (fieldType)
 				{
 					case ExceFieldType.INTEGER:

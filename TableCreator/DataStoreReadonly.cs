@@ -759,9 +759,17 @@ public class QueryDataStore: System.IDisposable
 	LinkedListNode<QueryDataStore> _node = null;
 	static LinkedList<QueryDataStore> _inactiveList = new LinkedList<QueryDataStore>();
 
+	DataStoreItem GetValue(int position)
+	{
+		return position >= 0 && position < _list.Count ? _list[position] : null; 
+	}
+
 	public DataStoreItem Value
 	{
-		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+		get
+		{
+			return GetValue(_position);
+		}
 	}
 
 	public static QueryDataStore Create(List<DataStoreItem> list, System.Func<DataStoreItem, bool> checker = null)
@@ -803,7 +811,7 @@ public class QueryDataStore: System.IDisposable
 					}
 				}
 			}
-			while (_position >= 0 && _filter != null && _filter(_list[_position]) == false);
+			while (_position >= 0 && _filter != null && _filter(Value) == false);
 		}
 		return _position >= 0;
 	}
@@ -849,9 +857,17 @@ public class QueryDataStore<TV> : System.IDisposable
 	protected System.Func<DataStoreItem, TV> _get_value = null;
 	protected System.Func<TV, TV, int> _comparison = null;
 
+	DataStoreItem GetValue(int position)
+	{
+		return position >= 0 && position < _list.Count ? _list[_keys[position]] : null;
+	}
+
 	public DataStoreItem Value
 	{
-		get { return _position >= 0 && _position < _list.Count ? _list[_position] : null; }
+		get
+		{
+			return GetValue(_position);
+		}
 	}
 
 	public bool Step()
@@ -878,7 +894,7 @@ public class QueryDataStore<TV> : System.IDisposable
 					}
 					else
 					{
-						DataStoreItem item = _list[_position];
+						DataStoreItem item = Value;
 						if (_comparison(_get_value(item), _value) != 0)
 						{
 							_position = -1;
@@ -886,7 +902,7 @@ public class QueryDataStore<TV> : System.IDisposable
 					}
 				}
 			}
-			while (_position >= 0 && _filter != null && _filter(_list[_position]) == false);
+			while (_position >= 0 && _filter != null && _filter(Value) == false);
 		}
 		return _position >= 0;
 	}

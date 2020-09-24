@@ -365,7 +365,10 @@ public class ExcelParser
 
 			for (int i = 0; i < FieldCount; i++)
 			{
-				_excelheader[i].fieldtype = GetFieldType(i);
+				if(_excelheader[i].fieldtype == ExceFieldType.None)
+                {
+					_excelheader[i].fieldtype = GetFieldType(i);
+				}
 			}
 
 			if (headersdict != null)
@@ -409,6 +412,11 @@ public class ExcelParser
 
 	public ExceFieldType GetFieldType(int field)
 	{
+		if(_excelheader != null && _excelheader.Length > field && _excelheader[field].fieldtype != ExceFieldType.None)
+        {
+			return _excelheader[field].fieldtype;
+		}
+
 		int start = field * (int)ExceFieldType.Count;
 		ExceFieldType fieldType = ExceFieldType.TEXT;
 		for(int index = (int)ExceFieldType.Count - 1; index >= 1; index --)
