@@ -191,6 +191,7 @@ class FlatBuffersCreator
 			}
 		}
 
+		int elementSize = _excel.RowCount >= ushort.MaxValue ? 4 : 2;
 		for (int j = 0; j < _excel.FieldCount; j++)
 		{
 			ExceFieldType fieldType = _excel.GetFieldType(j);
@@ -289,11 +290,18 @@ class FlatBuffersCreator
 						}
 						*/
 
-						builder.StartVector(4, filedValues.Count, 4);
+						builder.StartVector(elementSize, filedValues.Count, elementSize);
 						for (int i = _excel.RowCount - 1; i >= 0; i--)
 						{
 							ExcelFieldValues item = filedValues[i];
-							builder.AddInt(item.m_position);
+							if(elementSize == 4)
+                            {
+								builder.AddInt(item.m_position);
+							}
+							else
+                            {
+								builder.AddUshort((ushort)item.m_position);
+							}
 						}
 						indexArray[j] = builder.EndVector().Value;
 					}
@@ -301,7 +309,7 @@ class FlatBuffersCreator
 
 				default:
 					{
-						builder.StartVector(4, 0, 4);
+						builder.StartVector(elementSize, 0, elementSize);
 						indexArray[j] = builder.EndVector().Value;
 					}
 					break;
@@ -332,6 +340,7 @@ class FlatBuffersCreator
 
 		string excelname = _excel.FileName;
 		FlatBufferBuilder builder = new FlatBufferBuilder(1);
+		/*
 		builder.Finish(AppendIndexs(builder));
 		int[] int32Array = null;
 		FlatbufferDataStore test = FlatbufferDataStore.CreateFlatbufferDataStore(builder.DataBuffer);
@@ -341,7 +350,8 @@ class FlatBuffersCreator
 			test.AppendChild(cc, i, 0);
 			int32Array = cc.GetInt32Array();
 		}
-
+		*/
+	
 		//提前收集所有字符串
 		Dictionary<ulong, StringUnit> unitResult = new Dictionary<ulong, StringUnit>();
 		Dictionary<string, int> dict = new Dictionary<string, int>();

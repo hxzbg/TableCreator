@@ -49,10 +49,19 @@ public class FlatbufferDataStore : IFlatbufferObject
 		int o = __p.__offset(4);
 		int v = __p.__vector(o);
 		int[] array = new int[arrayLength];
-		for(int i = 0; i < arrayLength; i ++)
+		if(arrayLength >= ushort.MaxValue)
         {
-			array[i] = __p.bb.GetInt(v + i * 4);
-
+			for (int i = 0; i < arrayLength; i++)
+			{
+				array[i] = __p.bb.GetInt(v + i * 4);
+			}
+		}
+		else
+        {
+			for (int i = 0; i < arrayLength; i++)
+			{
+				array[i] = __p.bb.GetUshort(v + i * 2);
+			}
 		}
 		return array;
 	}
