@@ -45,7 +45,16 @@ public class FlatbufferDataStore : IFlatbufferObject
 
 	public int[] GetInt32Array()
 	{
-		return __p.__vector_as_array<int>(4);
+		int arrayLength = Length;
+		int o = __p.__offset(4);
+		int v = __p.__vector(o);
+		int[] array = new int[arrayLength];
+		for(int i = 0; i < arrayLength; i ++)
+        {
+			array[i] = __p.bb.GetInt(v + i * 4);
+
+		}
+		return array;
 	}
 
 	public int GetInt32(int index)
