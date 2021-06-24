@@ -58,6 +58,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ByteReader.cs" />
+    <Compile Include="CSVParser.cs" />
     <Compile Include="DataStoreReadonly.cs" />
     <Compile Include="ExcelParser.cs" />
     <Compile Include="FlatBuffersCreator.cs" />
@@ -78,6 +80,7 @@
     <Compile Include="LocalizationLoader.cs" />
     <Compile Include="Query.cs" />
     <Compile Include="UserDictionarySaver.cs" />
+    <Compile Include="XlsParser.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

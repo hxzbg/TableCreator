@@ -13,7 +13,7 @@ namespace TableCreator
 		{
 			try
 			{
-				bool rebuiild = false;
+				//bool rebuiild = false;
 				string bin_out = "";
 				string mysql_out = "";
 				string sharp_out = "";
@@ -48,11 +48,13 @@ namespace TableCreator
 								name_space = args[++index];
 								break;
 
+								/*
 							case "-rebuild":
 								{
 									rebuiild = true;
 								}
 								break;
+								*/
 						}
 					}
 					else
@@ -149,10 +151,10 @@ namespace TableCreator
 					mysql_out = Path.Combine(workPath, mysql_out);
 				}
 
+				/*
 				string fbspath = Path.Combine(workPath, "FBS.txt");
 				Dictionary<string, ExcelHeaderItem[]> excelheaders = ExcelParser.ParseExcelHeaderFromFbs(fbspath);
-
-				if(rebuiild)
+				if (rebuiild)
 				{
 					Dictionary<string, ExcelHeaderItem[]>.Enumerator em = excelheaders.GetEnumerator();
 					while(em.MoveNext())
@@ -172,6 +174,7 @@ namespace TableCreator
 					}
 					return;
 				}
+				*/
 
 				ExcelParser dict_parser = null;
 				Dictionary<string, string> user_dict = new Dictionary<string, string>();
@@ -194,7 +197,7 @@ namespace TableCreator
 					}
 				}
 
-				dict_parser = new ExcelParser(dict_path, null, FileAccess.Read);
+				dict_parser = ExcelParser.Create(dict_path);
 				if(dict_parser.FieldCount <= 0)
 				{
 					throw new System.Exception("没有找到任何字典数据，必须配置字典文件");
@@ -262,12 +265,13 @@ namespace TableCreator
 					user_dict[k] = v;
 				}
 
+				Dictionary<string, ExcelHeaderItem[]> excelheaders = new Dictionary<string, ExcelHeaderItem[]>();
 				StringBuilder mysql = new StringBuilder();
 				for (int i = 0; i < list.Count; i++)
 				{
 					string file = list[i];
 					Console.WriteLine(string.Format("{0} / {1} : {2}", i + 1, list.Count, file));
-					ExcelParser parser = new ExcelParser(file, excelheaders);
+					ExcelParser parser = ExcelParser.Create(file);
 
 					if (string.IsNullOrEmpty(bin_out) == false)
 					{
@@ -285,9 +289,8 @@ namespace TableCreator
 
 					if (string.IsNullOrEmpty(sharp_out) == false)
 					{
-						ExcelHeaderItem[] headers = null;
 						string loaderName = parser.FileName;
-						excelheaders.TryGetValue(loaderName, out headers);
+						ExcelHeaderItem[] headers = parser.ExcelHeader;
 						FlatBuffersLoaderBuilder builder = new FlatBuffersLoaderBuilder(loaderName, headers, name_space);
 						string sharppath = builder.Build(sharp_out);
 						if(string.IsNullOrEmpty(sharppath))
@@ -311,12 +314,12 @@ namespace TableCreator
 
 					Console.WriteLine();
 				}
-				ExcelParser.SaveExcelHeaderToFbs(fbspath, excelheaders);
+				//ExcelParser.SaveExcelHeaderToFbs(fbspath, excelheaders);
 
 				UserDictionarySaver.Merge(dict_path, user_dict, select);
 
 				dict_parser.Dispose();
-				dict_parser = new ExcelParser(dict_path, null);
+				dict_parser = ExcelParser.Create(dict_path);
 
 				if (mysql.Length > 0)
 				{

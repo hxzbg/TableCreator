@@ -170,6 +170,7 @@ class FlatBuffersCreator
 		public int m_position;
 		public int m_int32;
 		public float m_single;
+		public double m_double;
 		public long m_int64;
 
 		public ExcelFieldValues(int position)
@@ -218,6 +219,12 @@ class FlatBuffersCreator
 							item.m_single = _excel.GetSingle(i, j);
 						}
 						break;
+
+					case ExceFieldType.DOUBLE:
+                        {
+							item.m_double = _excel.GetDouble(i, j);
+						}
+						break;
 				}
 			}
 
@@ -226,6 +233,7 @@ class FlatBuffersCreator
 				case ExceFieldType.INTEGER:
 				case ExceFieldType.LONG:
 				case ExceFieldType.REAL:
+				case ExceFieldType.DOUBLE:
 					{
 						filedValues.Sort(delegate (ExcelFieldValues a, ExcelFieldValues b)
 						{
@@ -249,7 +257,13 @@ class FlatBuffersCreator
 										result = DataStoreHelper.__CompareSingle(a.m_single, b.m_single);
 									}
 									break;
-							}
+
+                                case ExceFieldType.DOUBLE:
+                                    {
+                                        result = DataStoreHelper.__CompareDouble(a.m_double, b.m_double);
+                                    }
+                                    break;
+                            }
 
 							if (result == 0 && a.m_position != b.m_position)
 							{
@@ -429,7 +443,13 @@ class FlatBuffersCreator
 						}
 						break;
 
-					case ExceFieldType.TEXT:
+                    case ExceFieldType.DOUBLE:
+                        {
+                            builder.AddDouble(j, _excel.GetDouble(i, j), 0.0f);
+                        }
+                        break;
+
+                    case ExceFieldType.TEXT:
 						{
 							ulong key = makeKey(j, i);
 							StringUnit unit = unitResult[key];

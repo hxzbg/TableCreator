@@ -22,9 +22,9 @@ public class FlatBuffersLoaderBuilder
 		for(int index = 0; index < parts.Length; index ++)
 		{
 			string part = parts[index];
-			sb.Append(part[0].ToString().ToUpper());
 			if(part.Length > 0)
 			{
+				sb.Append(part[0].ToString().ToUpper());
 				sb.Append(part, 1, part.Length - 1);
 			}
 		}
@@ -73,13 +73,20 @@ public class FlatBuffersLoaderBuilder
 					}
 					break;
 
-				case ExceFieldType.TEXT:
+                case ExceFieldType.DOUBLE:
+                    {
+                        typeName = "double";
+                        funName = "GetDouble";
+                    }
+                    break;
+
+                case ExceFieldType.TEXT:
 					{
 						typeName = "string";
 						funName = "GetString";
 					}
 					break;
-			}
+            }
 
 			//0:"{"
 			//1:"}"
@@ -92,8 +99,8 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("}\n");
 	}
 
-	static string[] _fieldType = { "int", "long", "float"};
-	static string[] _queryFun = { "QueryInt32", "QueryInt64", "QuerySingle" };
+	static string[] _fieldType = { "int", "long", "float", "double"};
+	static string[] _queryFun = { "QueryInt32", "QueryInt64", "QuerySingle", "QueryDouble" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
 		string fun = @"
@@ -183,6 +190,10 @@ public partial class {1} : DataStoreSet
 	{0}
 		return __Instance.__SearchSingle((int)field, value, filter);
 	{1}
+	public static QueryDataStoreDouble QueryDouble(Field field, double value, System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__SearchDouble((int)field, value, filter);
+	{1}
 	public static QueryDataStoreInt64 QueryInt64(Field field, long value, System.Func<DataStoreItem, bool> filter = null)
 	{0}
 		return __Instance.__SearchInt64((int)field, value, filter);
@@ -266,6 +277,7 @@ public partial class {1} : DataStoreSet
 				case ExceFieldType.INTEGER:
 				case ExceFieldType.LONG:
 				case ExceFieldType.REAL:
+				case ExceFieldType.DOUBLE:
 					{
 						string fieldType = _fieldType[(int)excelType - 1];
 						string queryFun = _queryFun[(int)excelType - 1];

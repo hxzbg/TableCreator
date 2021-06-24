@@ -179,3 +179,8 @@ public class QuerySingle<T> : Query<T, float> where T : DataStoreItem
 {
 
 }
+
+public class QueryDouble<T> : Query<T, double> where T : DataStoreItem
+{
+
+}

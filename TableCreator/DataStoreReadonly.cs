@@ -84,6 +84,12 @@ public class FlatbufferDataStore : IFlatbufferObject
 		return o != 0 ? __p.bb.GetLong(o + __p.bb_pos) : 0;
 	}
 
+	public double GetDouble(int index)
+    {
+        int o = __p.__offset((2 + index) * 2);
+        return o != 0 ? __p.bb.GetDouble(o + __p.bb_pos) : 0;
+    }
+
 	public string GetString(int index)
 	{
 		int o = __p.__offset((1 + index) * 2);
@@ -97,6 +103,7 @@ internal enum DataStoreItemValueType
 	Int32,
 	Int64,
 	Single,
+	Double,
 	String,
 }
 
@@ -107,6 +114,7 @@ interface DataStoreItemValue
 	float GetSingle();
 	long GetInt64();
 	string GetString();
+	double GetDouble();
 }
 
 class DataStoreItemInt32Value : DataStoreItemValue
@@ -122,6 +130,7 @@ class DataStoreItemInt32Value : DataStoreItemValue
 	public long GetInt64() { return _value; }
 	public float GetSingle() {throw new System.NotImplementedException();}
 	public string GetString() {throw new System.NotImplementedException();}
+	public double GetDouble() { return _value; }
 }
 
 class DataStoreItemInt64Value : DataStoreItemValue
@@ -137,6 +146,7 @@ class DataStoreItemInt64Value : DataStoreItemValue
 	public long GetInt64() {return _value;}
 	public float GetSingle() {throw new System.NotImplementedException();}
 	public string GetString() {throw new System.NotImplementedException();}
+	public double GetDouble() { return _value; }
 }
 
 class DataStoreItemSingleValue : DataStoreItemValue
@@ -152,6 +162,23 @@ class DataStoreItemSingleValue : DataStoreItemValue
 	public long GetInt64() {throw new System.NotImplementedException();}
 	public float GetSingle() {return _value;}
 	public string GetString() {throw new System.NotImplementedException();}
+	public double GetDouble() { return _value; }
+}
+
+class DataStoreItemDoubleValue : DataStoreItemValue
+{
+	double _value = 0;
+    public DataStoreItemDoubleValue(double v)
+    {
+        _value = v;
+    }
+
+    public DataStoreItemValueType GetValueType() { return DataStoreItemValueType.Double; }
+    public int GetInt32() { throw new System.NotImplementedException(); }
+    public long GetInt64() { throw new System.NotImplementedException(); }
+    public float GetSingle() { throw new System.NotImplementedException(); }
+    public string GetString() { throw new System.NotImplementedException(); }
+    public double GetDouble() { return _value; }
 }
 
 class DataStoreItemStringValue : DataStoreItemValue
@@ -170,6 +197,7 @@ class DataStoreItemStringValue : DataStoreItemValue
 	{
 		return _value;
 	}
+	public double GetDouble() { throw new System.NotImplementedException(); }
 }
 
 public abstract class DataStoreItem
@@ -202,6 +230,12 @@ public abstract class DataStoreItem
 			case DataStoreItemValueType.Single:
 				{
 					result = DataStoreHelper.__CompareSingle(va.GetSingle(), vb.GetSingle());
+				}
+				break;
+
+			case DataStoreItemValueType.Double:
+                {
+					result = DataStoreHelper.__CompareDouble(va.GetDouble(), vb.GetDouble());
 				}
 				break;
 
@@ -249,6 +283,10 @@ public abstract class DataStoreItem
 					m_values[index] = new DataStoreItemSingleValue(buff.GetSingle(index));
 					break;
 
+				case (int)DataStoreItemValueType.Double:
+					m_values[index] = new DataStoreItemDoubleValue(buff.GetDouble(index));
+					break;
+
 				case (int)DataStoreItemValueType.String:
 					{
 						string v = null;
@@ -281,6 +319,12 @@ public abstract class DataStoreItem
 		DataStoreItemValue value = GetValue(position);
 		return value != null ? value.GetInt64() : 0;
 	}
+
+	public double GetDouble(int position)
+    {
+        DataStoreItemValue value = GetValue(position);
+        return value != null ? value.GetDouble() : 0;
+    }
 
 	public string GetString(int position)
 	{
@@ -605,7 +649,16 @@ public class DataStoreHelper
 		return a > b ? 1 : -1;
 	};
 
-	readonly public static System.Func<string, string, int> __CompareString = delegate (string a, string b)
+    readonly public static System.Func<double, double, int> __CompareDouble = delegate (double a, double b)
+    {
+        if (a == b)
+        {
+            return 0;
+        }
+        return a > b ? 1 : -1;
+    };
+
+    readonly public static System.Func<string, string, int> __CompareString = delegate (string a, string b)
 	{
 		return a.CompareTo(b);
 	};

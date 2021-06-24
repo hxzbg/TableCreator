@@ -698,7 +698,6 @@ namespace FlatBuffers
 				}
 			}
 #endif
-			return "";
         }
 #endif
 
