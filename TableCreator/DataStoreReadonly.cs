@@ -559,6 +559,18 @@ public class DataStoreSet
 		return (QueryDataStoreSingle)QueryDataStoreSingle.Create(m_list, m_mainKeys[field], field, value, filter);
 	}
 
+	protected virtual QueryDataStoreDouble __SearchDouble(int field, double value, System.Func<DataStoreItem, bool> filter = null)
+	{
+		__BuildKeyByField(field);
+		return (QueryDataStoreDouble)QueryDataStoreDouble.Create(m_list, m_mainKeys[field], field, value, filter);
+	}
+
+	protected virtual QueryDataStoreString __SearchString(int field, string value, System.Func<DataStoreItem, bool> filter = null)
+	{
+		__BuildKeyByField(field);
+		return (QueryDataStoreString)QueryDataStoreString.Create(m_list, m_mainKeys[field], field, value, filter);
+	}
+
 	protected void __Disposed()
     {
 		if (m_buffer != null)
@@ -658,10 +670,62 @@ public class DataStoreHelper
         return a > b ? 1 : -1;
     };
 
-    readonly public static System.Func<string, string, int> __CompareString = delegate (string a, string b)
+	unsafe static int CompareString(string a, string b)
 	{
-		return a.CompareTo(b);
-	};
+		if (a == b)
+		{
+			return 0;
+		}
+
+		if (string.IsNullOrEmpty(a))
+		{
+			return -1;
+		}
+		else if (string.IsNullOrEmpty(b))
+		{
+			return 1;
+		}
+
+		long result = 0;
+		fixed(char* p1 = a)
+		{
+			fixed(char* p2 = b)
+			{
+				char* ptr_a = p1;
+				char* ptr_b = p2;
+				while(ptr_a != null || ptr_b != null)
+				{
+					char ca = ptr_a != null ? *ptr_a++ : (char)0;
+					char cb = ptr_b != null ? *ptr_b++ : (char)0;
+					if (ca != 0 && cb != 0)
+					{
+						result += (ca - cb);
+					}
+					else
+					{
+						if(ca == 0)
+						{
+							ptr_a = null;
+							result -= cb;
+						}
+
+						if(cb == 0)
+						{
+							ptr_b = null;
+							result += ca;
+						}
+					}
+				}
+			}
+		}
+		if(result == 0)
+		{
+			return 0;
+		}
+		return result > 0 ? 1 : -1;
+	}
+
+	readonly public static System.Func<string, string, int> __CompareString = CompareString;
 
 	public static System.Func<string, ByteBuffer> LoadByteBuffer = null;
 
@@ -1077,6 +1141,7 @@ public class QueryDataStoreSingle : QueryDataStore<float>
 	public static QueryDataStoreSingle Create(List<DataStoreItem> list, int[] keys, int field, float value, System.Func<DataStoreItem, bool> checker = null)
 	{
 		QueryDataStoreSingle query = new QueryDataStoreSingle();
+		query._field = field;
 		query._list = list;
 		query._keys = keys;
 		query._value = value;
@@ -1090,6 +1155,64 @@ public class QueryDataStoreSingle : QueryDataStore<float>
 	public void Reset(int value)
 	{
 		_value = value;
+		_position = _list.Count;
+	}
+}
+
+public class QueryDataStoreDouble : QueryDataStore<double>
+{
+	int _field = 0;
+	double get_value(DataStoreItem item)
+	{
+		return item.GetValue(_field).GetDouble();
+	}
+
+	public static QueryDataStoreDouble Create(List<DataStoreItem> list, int[] keys, int field, double value, System.Func<DataStoreItem, bool> checker = null)
+	{
+		QueryDataStoreDouble query = new QueryDataStoreDouble();
+		query._field = field;
+		query._list = list;
+		query._keys = keys;
+		query._value = value;
+		query._filter = checker;
+		query._comparison = DataStoreHelper.__CompareDouble;
+		query._get_value = query.get_value;
+		query._position = list.Count;
+		return query;
+	}
+
+	public void Reset(int value)
+	{
+		_value = value;
+		_position = _list.Count;
+	}
+}
+
+public class QueryDataStoreString : QueryDataStore<string>
+{
+	int _field = 0;
+	string get_value(DataStoreItem item)
+	{
+		return item.GetValue(_field).GetString();
+	}
+
+	public static QueryDataStoreString Create(List<DataStoreItem> list, int[] keys, int field, string value, System.Func<DataStoreItem, bool> checker = null)
+	{
+		QueryDataStoreString query = new QueryDataStoreString();
+		query._field = field;
+		query._list = list;
+		query._keys = keys;
+		query._value = value;
+		query._filter = checker;
+		query._comparison = DataStoreHelper.__CompareString;
+		query._get_value = query.get_value;
+		query._position = list.Count;
+		return query;
+	}
+
+	public void Reset()
+	{
+		_value = string.Empty;
 		_position = _list.Count;
 	}
 }

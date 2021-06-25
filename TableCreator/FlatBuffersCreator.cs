@@ -172,6 +172,7 @@ class FlatBuffersCreator
 		public float m_single;
 		public double m_double;
 		public long m_int64;
+		public string m_string;
 
 		public ExcelFieldValues(int position)
 		{
@@ -225,109 +226,105 @@ class FlatBuffersCreator
 							item.m_double = _excel.GetDouble(i, j);
 						}
 						break;
+
+					case ExceFieldType.TEXT:
+						{
+							item.m_string = _excel.GetString(i, j);
+						}
+						break;
 				}
 			}
 
-			switch (fieldType)
+			filedValues.Sort(delegate (ExcelFieldValues a, ExcelFieldValues b)
 			{
-				case ExceFieldType.INTEGER:
-				case ExceFieldType.LONG:
-				case ExceFieldType.REAL:
-				case ExceFieldType.DOUBLE:
-					{
-						filedValues.Sort(delegate (ExcelFieldValues a, ExcelFieldValues b)
+				int result = 0;
+				switch (fieldType)
+				{
+					case ExceFieldType.INTEGER:
 						{
-							int result = 0;
-							switch (fieldType)
-							{
-								case ExceFieldType.INTEGER:
-									{
-										result = DataStoreHelper.__CompareInt32(a.m_int32, b.m_int32);
-									}
-									break;
-
-								case ExceFieldType.LONG:
-									{
-										result = DataStoreHelper.__CompareInt64(a.m_int64, b.m_int64);
-									}
-									break;
-
-								case ExceFieldType.REAL:
-									{
-										result = DataStoreHelper.__CompareSingle(a.m_single, b.m_single);
-									}
-									break;
-
-                                case ExceFieldType.DOUBLE:
-                                    {
-                                        result = DataStoreHelper.__CompareDouble(a.m_double, b.m_double);
-                                    }
-                                    break;
-                            }
-
-							if (result == 0 && a.m_position != b.m_position)
-							{
-								result = DataStoreHelper.__CompareInt32(a.m_position, b.m_position);
-							}
-							return result;
-						});
-
-						/*
-						bool writelog = false;
-						if (writelog)
-						{
-							StringBuilder sb = new StringBuilder();
-							for (int i = 0; i < filedValues.Count; i++)
-							{
-								switch (fieldType)
-								{
-									case ExceFieldType.INTEGER:
-										{
-											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int32);
-										}
-										break;
-
-									case ExceFieldType.LONG:
-										{
-											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int64);
-										}
-										break;
-
-									case ExceFieldType.REAL:
-										{
-											sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_single);
-										}
-										break;
-								}
-							}
-							File.WriteAllText(@"Y:\Documents\Work\log\log.csv", sb.ToString());
+							result = DataStoreHelper.__CompareInt32(a.m_int32, b.m_int32);
 						}
-						*/
+						break;
 
-						builder.StartVector(elementSize, filedValues.Count, elementSize);
-						for (int i = _excel.RowCount - 1; i >= 0; i--)
+					case ExceFieldType.LONG:
 						{
-							ExcelFieldValues item = filedValues[i];
-							if(elementSize == 4)
-                            {
-								builder.AddInt(item.m_position);
-							}
-							else
-                            {
-								builder.AddUshort((ushort)item.m_position);
-							}
+							result = DataStoreHelper.__CompareInt64(a.m_int64, b.m_int64);
 						}
-						indexArray[j] = builder.EndVector().Value;
-					}
-					break;
+						break;
 
-				default:
+					case ExceFieldType.REAL:
+						{
+							result = DataStoreHelper.__CompareSingle(a.m_single, b.m_single);
+						}
+						break;
+
+					case ExceFieldType.DOUBLE:
+						{
+							result = DataStoreHelper.__CompareDouble(a.m_double, b.m_double);
+						}
+						break;
+
+					case ExceFieldType.TEXT:
+						{
+							result = DataStoreHelper.__CompareString(a.m_string, b.m_string);
+						}
+						break;
+				}
+
+				if (result == 0 && a.m_position != b.m_position)
+				{
+					result = DataStoreHelper.__CompareInt32(a.m_position, b.m_position);
+				}
+				return result;
+			});
+
+			/*
+			bool writelog = false;
+			if (writelog)
+			{
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < filedValues.Count; i++)
+				{
+					switch (fieldType)
 					{
-						builder.StartVector(elementSize, 0, elementSize);
-						indexArray[j] = builder.EndVector().Value;
+						case ExceFieldType.INTEGER:
+							{
+								sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int32);
+							}
+							break;
+
+						case ExceFieldType.LONG:
+							{
+								sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_int64);
+							}
+							break;
+
+						case ExceFieldType.REAL:
+							{
+								sb.AppendFormat("{0},{1},{2}\n", filedValues[i].m_position, i, filedValues[i].m_single);
+							}
+							break;
 					}
-					break;
+				}
+				File.WriteAllText(@"Y:\Documents\Work\log\log.csv", sb.ToString());
 			}
+			*/
+
+			builder.StartVector(elementSize, filedValues.Count, elementSize);
+			for (int i = _excel.RowCount - 1; i >= 0; i--)
+			{
+				ExcelFieldValues item = filedValues[i];
+				if (elementSize == 4)
+				{
+					builder.AddInt(item.m_position);
+				}
+				else
+				{
+					builder.AddUshort((ushort)item.m_position);
+				}
+			}
+			indexArray[j] = builder.EndVector().Value;
+
 			builder.StartObject(1);
 			builder.AddOffset(0, indexArray[j], 0);
 			indexArray[j] = builder.EndObject();

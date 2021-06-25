@@ -99,8 +99,8 @@ public class FlatBuffersLoaderBuilder
 		file.AppendLine("}\n");
 	}
 
-	static string[] _fieldType = { "int", "long", "float", "double"};
-	static string[] _queryFun = { "QueryInt32", "QueryInt64", "QuerySingle", "QueryDouble" };
+	static string[] _fieldType = { "int", "long", "float", "double", "string"};
+	static string[] _queryFun = { "QueryInt32", "QueryInt64", "QuerySingle", "QueryDouble", "QueryString" };
 	void BuildParser(StringBuilder file, string structItemName, string structListName, string parserItemName, string paserName)
 	{
 		string fun = @"
@@ -198,6 +198,10 @@ public partial class {1} : DataStoreSet
 	{0}
 		return __Instance.__SearchInt64((int)field, value, filter);
 	{1}
+	public static QueryDataStoreString QueryString(Field field, string value, System.Func<DataStoreItem, bool> filter = null)
+	{0}
+		return __Instance.__SearchString((int)field, value, filter);
+	{1}
 ";
 		file.AppendFormat(fun, "{", "}", paserName, parserItemName, _loaderName);
 
@@ -272,24 +276,18 @@ public partial class {1} : DataStoreSet
 		{
 			ExcelHeaderItem header = _headers[index];
 			ExceFieldType excelType = header.fieldtype;
-			switch (excelType)
+			int typeid = (int)excelType - 1;
+			if(typeid >= 0 && typeid < _fieldType.Length && typeid < _queryFun.Length)
 			{
-				case ExceFieldType.INTEGER:
-				case ExceFieldType.LONG:
-				case ExceFieldType.REAL:
-				case ExceFieldType.DOUBLE:
-					{
-						string fieldType = _fieldType[(int)excelType - 1];
-						string queryFun = _queryFun[(int)excelType - 1];
-						file.AppendFormat(fun, "{", "}", parserItemName, fieldType, queryFun, buildName(header.fieldname));
-					}
-					break;
-
-				default:
-					break;
+				string fieldType = _fieldType[(int)excelType - 1];
+				string queryFun = _queryFun[(int)excelType - 1];
+				file.AppendFormat(fun, "{", "}", parserItemName, fieldType, queryFun, buildName(header.fieldname));
+			}
+			else
+			{
+				throw new System.Exception(string.Format("未对类型{0}增加索引适配代码。", excelType));
 			}
 		}
-
 
 		file.AppendLine("}");
 
