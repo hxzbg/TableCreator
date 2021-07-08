@@ -20,6 +20,7 @@ public class ExcelHeaderItem
 {
     public int fieldid;
     public string fieldname;
+    public int[] indexs;
     public ExceFieldType fieldtype;
 }
 
@@ -84,6 +85,21 @@ public class ExcelParser
     {
         ExcelHeaderItem header = GetHeaderItem(field);
         return header != null ? header.fieldtype : ExceFieldType.None;
+    }
+
+    public void SetFiledIndexs(int field, int[] indexs)
+    {
+        ExcelHeaderItem header = GetHeaderItem(field);
+        if(header != null)
+        {
+            header.indexs = indexs;
+        }
+    }
+
+    public int[] GetFieldIndexs(int field)
+    {
+        ExcelHeaderItem header = GetHeaderItem(field);
+        return header != null ? header.indexs : null;
     }
 
     public int RowCount

@@ -31,6 +31,7 @@ public class CSVParser : ExcelParser
 			reader.ReadCSV(types);
 
 			int index = 0;
+            List<int> fieldpos = new List<int>();
             List<ExcelHeaderItem> excelheaderlist = new List<ExcelHeaderItem>();
 			for (int i = 0; i < header.Count && i < types.Count; i++)
             {
@@ -43,6 +44,7 @@ public class CSVParser : ExcelParser
 				ExceFieldType fieldType = ParseFieldType(types[i]);
 				if (fieldType != ExceFieldType.None)
                 {
+                    fieldpos.Add(i);
                     ExcelHeaderItem fielditem = new ExcelHeaderItem();
                     fielditem.fieldid = index++;
                     fielditem.fieldname = fieldName;
@@ -55,14 +57,21 @@ public class CSVParser : ExcelParser
 			List<string> comment = new List<string>();
 			reader.ReadCSV(comment);
 
-			List<string> item = new List<string>();
+            int fieldSize = fieldpos.Count;
+            List<string> item = new List<string>();
 			while (true)
             {
                 if(reader.ReadCSV(item) == false)
                 {
 					break;
 				}
-				_contentList.Add(item.ToArray());
+                string[] contents = new string[fieldSize];
+                for(int i = 0; i < fieldSize; i ++)
+                {
+                    int pos = fieldpos[i];
+                    contents[i] = pos < item.Count ? item[pos] : string.Empty;
+                }
+				_contentList.Add(contents);
             }
 			reader.Dispose();
 		}

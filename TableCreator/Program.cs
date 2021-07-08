@@ -17,6 +17,7 @@ namespace TableCreator
 				string bin_out = "";
 				string mysql_out = "";
 				string sharp_out = "";
+                string lua_out = "";
 				string dict_path = "";
 				string name_space = "";
 				List<string> list = new List<string>();
@@ -105,7 +106,12 @@ namespace TableCreator
 									sharp_out = config_node.GetAttribute("sharp_output");
 								}
 
-								if (config_node.HasAttribute("mysql_output"))
+                                if (config_node.HasAttribute("lua_output"))
+                                {
+                                    lua_out = config_node.GetAttribute("lua_output");
+                                }
+
+                                if (config_node.HasAttribute("mysql_output"))
 								{
 									mysql_out = config_node.GetAttribute("mysql_output");
 								}
@@ -132,7 +138,8 @@ namespace TableCreator
 				}
 				config_node.SetAttribute("bytes_output", bin_out);
 				config_node.SetAttribute("sharp_output", sharp_out);
-				config_node.SetAttribute("mysql_output", mysql_out);
+                config_node.SetAttribute("lua_output", lua_out);
+                config_node.SetAttribute("mysql_output", mysql_out);
 				config_node.SetAttribute("dictionary", dict_path);
 				doc.Save(configPath);
 
@@ -146,7 +153,12 @@ namespace TableCreator
 					sharp_out = Path.Combine(workPath, sharp_out);
 				}
 
-				if (string.IsNullOrEmpty(mysql_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(mysql_out)))
+                if (string.IsNullOrEmpty(lua_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(lua_out)))
+                {
+                    lua_out = Path.Combine(workPath, lua_out);
+                }
+
+                if (string.IsNullOrEmpty(mysql_out) == false && string.IsNullOrEmpty(Path.GetPathRoot(mysql_out)))
 				{
 					mysql_out = Path.Combine(workPath, mysql_out);
 				}
@@ -295,7 +307,7 @@ namespace TableCreator
 						string sharppath = builder.Build(sharp_out);
 						if(string.IsNullOrEmpty(sharppath))
 						{
-							Console.WriteLine("生成代码失败。");
+							Console.WriteLine("生成CSharpe代码失败。");
 						}
 						else
 						{
@@ -303,7 +315,23 @@ namespace TableCreator
 						}
 					}
 
-					if (string.IsNullOrEmpty(mysql_out) == false)
+                    if (string.IsNullOrEmpty(lua_out) == false)
+                    {
+                        string loaderName = parser.FileName;
+
+                        LuaCodeBuilder builder = new LuaCodeBuilder(parser);
+                        string luapath = builder.Build(lua_out);
+                        if (string.IsNullOrEmpty(luapath))
+                        {
+                            Console.WriteLine("生成Lua代码失败。");
+                        }
+                        else
+                        {
+                            Console.WriteLine(string.Format("write code to {0}", luapath));
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(mysql_out) == false)
 					{
 						MySqlBuilder builder = new MySqlBuilder(parser, user_dict);
 						builder.Append(mysql);

@@ -74,6 +74,7 @@
     <Compile Include="FlatBuffers\Table.cs" />
     <Compile Include="FormatOperatorChecker.cs" />
     <Compile Include="LocalizationSaver.cs" />
+    <Compile Include="LuaCodeBuilder.cs" />
     <Compile Include="MySqlBuilder.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -311,6 +311,13 @@ class FlatBuffersCreator
 			*/
 
 			builder.StartVector(elementSize, filedValues.Count, elementSize);
+            int[] indexs = new int[_excel.RowCount];
+            for(int i = 0; i < indexs.Length; i ++)
+            {
+                indexs[i] = filedValues[i].m_position;
+            }
+            _excel.SetFiledIndexs(j, indexs);
+
 			for (int i = _excel.RowCount - 1; i >= 0; i--)
 			{
 				ExcelFieldValues item = filedValues[i];

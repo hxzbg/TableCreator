@@ -686,7 +686,6 @@ public class DataStoreHelper
 			return 1;
 		}
 
-		long result = 0;
 		fixed(char* p1 = a)
 		{
 			fixed(char* p2 = b)
@@ -697,32 +696,14 @@ public class DataStoreHelper
 				{
 					char ca = ptr_a != null ? *ptr_a++ : (char)0;
 					char cb = ptr_b != null ? *ptr_b++ : (char)0;
-					if (ca != 0 && cb != 0)
-					{
-						result += (ca - cb);
-					}
-					else
-					{
-						if(ca == 0)
-						{
-							ptr_a = null;
-							result -= cb;
-						}
-
-						if(cb == 0)
-						{
-							ptr_b = null;
-							result += ca;
-						}
-					}
+					if(ca != cb)
+                    {
+                        return ca > cb ? 1 : -1;
+                    }
 				}
 			}
 		}
-		if(result == 0)
-		{
-			return 0;
-		}
-		return result > 0 ? 1 : -1;
+        return 0;
 	}
 
 	readonly public static System.Func<string, string, int> __CompareString = CompareString;
