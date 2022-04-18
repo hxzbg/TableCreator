@@ -115,10 +115,21 @@ public class ExcelParser
         return row >= 0 && row < _contentList.Count && field >= 0 && field < FieldCount ? _contentList[row][field] : string.Empty;
     }
 
+    public string ChangeDataToD(string strData)
+    {
+        Decimal dData = 0.0M;
+        if(strData.Contains("E"))
+        {
+            dData = Convert.ToDecimal(Decimal.Parse(strData, System.Globalization.NumberStyles.Float));
+            return dData.ToString();
+        }
+        return strData;
+    }
+
     public long GetLong(int row, int field)
     {
         long var = 0;
-        string str = GetString(row, field);
+        string str = ChangeDataToD(GetString(row, field));
         if (string.IsNullOrEmpty(str) == false && long.TryParse(str, out var) == false)
         {
             Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为整数失败", row + 1, GetFieldName(field), str));
@@ -129,7 +140,7 @@ public class ExcelParser
     public float GetSingle(int row, int field)
     {
         float var = 0;
-        string str = GetString(row, field);
+        string str = ChangeDataToD(GetString(row, field));
         if (string.IsNullOrEmpty(str) == false && float.TryParse(str, out var) == false)
         {
             Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为浮点数失败", row + 1, GetFieldName(field), str));
@@ -140,7 +151,7 @@ public class ExcelParser
     public double GetDouble(int row, int field)
     {
         double var = 0;
-        string str = GetString(row, field);
+        string str = ChangeDataToD(GetString(row, field));
         if (string.IsNullOrEmpty(str) == false && double.TryParse(str, out var) == false)
         {
             Console.WriteLine(string.Format("{0}.{1}：{2}, 转换为双精度数失败", row + 1, GetFieldName(field), str));
