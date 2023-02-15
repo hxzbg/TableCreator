@@ -17,7 +17,10 @@ public class ByteReader
 {
 	StreamReader mStream;
 
-	public ByteReader (StreamReader stream) { mStream = stream; }
+	public ByteReader (StreamReader stream)
+    {
+        mStream = stream;
+    }
 
 	/// <summary>
 	/// Read the contents of the specified file and return a Byte Reader to work with.
@@ -25,10 +28,13 @@ public class ByteReader
 
 	static public ByteReader Open (string path)
 	{
+        bool hasBOM = false;
+        Encoding encoding = EncodingChecker.TextEncoding.GetFileEncoding(path, ref hasBOM);
+
         FileStream fs = File.OpenRead(path);
         if (fs != null)
         {
-            return new ByteReader(new StreamReader(fs));
+            return new ByteReader(new StreamReader(fs, encoding));
         }
         return null;
 	}
@@ -55,7 +61,7 @@ public class ByteReader
 
 	public string ReadLine (bool skipEmptyLines)
 	{
-		string line = mStream.ReadLine();
+        string line = mStream.ReadLine();
 		while(skipEmptyLines && string.IsNullOrEmpty(line) && mStream.EndOfStream == false)
         {
 			line = mStream.ReadLine();
