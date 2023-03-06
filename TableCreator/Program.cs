@@ -2,6 +2,7 @@
 using System.IO;
 using System.Xml;
 using System.Text;
+using OfficeOpenXml;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -21,7 +22,8 @@ namespace TableCreator
 				string dict_path = "";
 				string name_space = "";
 				List<string> list = new List<string>();
-				for (int index = 0; index < args.Length; index++)
+                ExcelPackage.LicenseContext = LicenseContext.Commercial;
+                for (int index = 0; index < args.Length; index++)
 				{
 					string arg = args[index];
 					Console.WriteLine(arg);

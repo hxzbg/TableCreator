@@ -25,7 +25,7 @@ public class UserDictionarySaver
 			int rows = 0;
 			package = new ExcelPackage(stream);
 			ExcelWorkbook workbook = package.Workbook;
-			ExcelWorksheet sheet = workbook.Worksheets[1];
+			ExcelWorksheet sheet = workbook.Worksheets[0];
 			ExcelAddressBase Dimension = sheet.Dimension;
 			var cells = sheet.Cells;
 			if (Dimension != null)
